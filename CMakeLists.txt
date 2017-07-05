@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.4.1)
 project(hobbes)
 set (CMAKE_CXX_STANDARD 11)
 
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 3.7.1 EXACT REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 # not sure how to select just the necessary components across all LLVM versions

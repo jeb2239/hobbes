@@ -1,0 +1,14 @@
+/*
+Run length encoding
+*/
+rle xs = toArray(
+  foldl(\r x.
+    match unroll(r) with |
+    |1=(h,t)| where h.0 == x -> do {h.1 <- (h.1+1); return r}
+    | _ -> cons((x,1L),r),
+
+    nil(),
+    xs
+  )
+)  
+
