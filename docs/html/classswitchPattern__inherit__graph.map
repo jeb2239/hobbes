@@ -1,7 +1,0 @@
-<map id="switchPattern" name="switchPattern">
-<area shape="rect" id="node2" href="$structhobbes_1_1inferMappingF.html" title="{hobbes::inferMappingF\l\&lt; UnitV \&gt;\n|+ vm\l|+ inferMappingF()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l}" alt="" coords="5,153,160,333"/>
-<area shape="rect" id="node3" href="$structhobbes_1_1inferTypeF.html" title="{hobbes::inferTypeF\l\&lt; MonoTypePtr \&gt;\n|+ s\l|+ inferTypeF()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l}" alt="" coords="185,153,319,333"/>
-<area shape="rect" id="node4" href="$structhobbes_1_1makeSuccStateF.html" title="{hobbes::makeSuccStateF\l\&lt; MStatePtr \&gt;\n|+ dfa\l+ ps\l+ c\l|+ makeSuccStateF()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ regexNormalize()\l}" alt="" coords="344,131,517,355"/>
-<area shape="rect" id="node5" href="$structhobbes_1_1refutableP.html" title="{hobbes::refutableP\l\&lt; bool \&gt;\n||+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l}" alt="" coords="541,160,672,325"/>
-<area shape="rect" id="node6" href="$structhobbes_1_1scorePatternF.html" title="{hobbes::scorePatternF\l\&lt; size_t \&gt;\n|+ recprims\l|+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l}" alt="" coords="696,160,851,325"/>
-</map>

@@ -1,0 +1,21 @@
+<map id="bin/hog/batchrecv.C" name="bin/hog/batchrecv.C">
+<area shape="rect" id="node2" href="$hobbes_8H.html" title="hobbes/hobbes.H" alt="" coords="1442,229,1566,256"/>
+<area shape="rect" id="node13" href="$util_2str_8H.html" title="hobbes/util/str.H" alt="" coords="585,528,703,555"/>
+<area shape="rect" id="node26" href="$storage_8H.html" title="hobbes/storage.H" alt="" coords="2201,528,2327,555"/>
+<area shape="rect" id="node41" href="$ipc_2net_8H.html" title="hobbes/ipc/net.H" alt="" coords="61,379,182,405"/>
+<area shape="rect" id="node43" href="$os_8H.html" title="hobbes/util/os.H" alt="" coords="2163,80,2280,107"/>
+<area shape="rect" id="node47" href="$session_8H.html" title="session.H" alt="" coords="1787,80,1869,107"/>
+<area shape="rect" id="node50" href="$netio_8H.html" title="netio.H" alt="" coords="2696,453,2760,480"/>
+<area shape="rect" id="node3" href="$cc_8H.html" title="hobbes/eval/cc.H" alt="" coords="845,304,969,331"/>
+<area shape="rect" id="node17" href="$tylift_8H.html" title="hobbes/lang/tylift.H" alt="" coords="807,379,942,405"/>
+<area shape="rect" id="node18" href="$util_2variant_8H.html" title="hobbes/util/variant.H" alt="" coords="1134,453,1277,480"/>
+<area shape="rect" id="node19" href="$read_2parser_8H.html" title="hobbes/read/parser.H" alt="" coords="1459,379,1605,405"/>
+<area shape="rect" id="node21" href="$cmodule_8H.html" title="hobbes/eval/cmodule.H" alt="" coords="1045,304,1203,331"/>
+<area shape="rect" id="node22" href="$events_8H.html" title="hobbes/events/events.H" alt="" coords="1542,304,1706,331"/>
+<area shape="rect" id="node23" href="$prepl_8H.html" title="hobbes/ipc/prepl.H" alt="" coords="1605,528,1736,555"/>
+<area shape="rect" id="node25" href="$region_8H.html" title="hobbes/util/region.H" alt="" coords="1296,379,1435,405"/>
+<area shape="rect" id="node4" href="$type_8H.html" title="hobbes/lang/type.H" alt="" coords="467,453,602,480"/>
+<area shape="rect" id="node5" href="$array_8H.html" title="hobbes/util/array.H" alt="" coords="881,603,1013,629"/>
+<area shape="rect" id="node48" href="$series_8H.html" title="hobbes/db/series.H" alt="" coords="1667,155,1802,181"/>
+<area shape="rect" id="node49" href="$perf_8H.html" title="hobbes/util/perf.H" alt="" coords="1760,528,1885,555"/>
+</map>

@@ -1,4 +1,4 @@
-OUTPUT_DIRECTORY = ./docs/
+OUTPUT_DIRECTORY = ./
 EXTRACT_ALL = yes
 EXTRACT_PRIVATE = yes
 EXTRACT_STATIC = yes
@@ -19,3 +19,4 @@ TEMPLATE_RELATIONS   = YES
 DOT_TRANSPARENT      = YES
 GENERATE_HTML = YES
 GENERATE_LATEX=NO  # https://www.stack.nl/~dimitri/doxygen/manual/output.html many outputs is possible
+HTML_OUTPUT = ./docs/

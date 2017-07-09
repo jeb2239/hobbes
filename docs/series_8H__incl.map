@@ -1,0 +1,32 @@
+<map id="include/hobbes/db/series.H" name="include/hobbes/db/series.H">
+<area shape="rect" id="node2" href="$hobbes_8H.html" title="hobbes/hobbes.H" alt="" coords="970,80,1094,107"/>
+<area shape="rect" id="node27" href="$tylift_8H.html" title="hobbes/lang/tylift.H" alt="" coords="1089,393,1224,420"/>
+<area shape="rect" id="node46" href="$file_8H.html" title="hobbes/db/file.H" alt="" coords="614,319,731,345"/>
+<area shape="rect" id="node47" href="$time_8H.html" title="hobbes/util/time.H" alt="" coords="44,543,172,569"/>
+<area shape="rect" id="node49" href="$perf_8H.html" title="hobbes/util/perf.H" alt="" coords="211,617,336,644"/>
+<area shape="rect" id="node3" href="$cc_8H.html" title="hobbes/eval/cc.H" alt="" coords="1964,155,2088,181"/>
+<area shape="rect" id="node28" href="$util_2variant_8H.html" title="hobbes/util/variant.H" alt="" coords="244,468,386,495"/>
+<area shape="rect" id="node34" href="$read_2parser_8H.html" title="hobbes/read/parser.H" alt="" coords="2707,237,2854,263"/>
+<area shape="rect" id="node38" href="$region_8H.html" title="hobbes/util/region.H" alt="" coords="806,319,944,345"/>
+<area shape="rect" id="node42" href="$cmodule_8H.html" title="hobbes/eval/cmodule.H" alt="" coords="2878,237,3037,263"/>
+<area shape="rect" id="node43" href="$events_8H.html" title="hobbes/events/events.H" alt="" coords="3465,543,3629,569"/>
+<area shape="rect" id="node44" href="$prepl_8H.html" title="hobbes/ipc/prepl.H" alt="" coords="492,155,623,181"/>
+<area shape="rect" id="node4" href="$expr_8H.html" title="hobbes/lang/expr.H" alt="" coords="2590,393,2725,420"/>
+<area shape="rect" id="node5" href="$type_8H.html" title="hobbes/lang/type.H" alt="" coords="1954,468,2089,495"/>
+<area shape="rect" id="node22" href="$util_2str_8H.html" title="hobbes/util/str.H" alt="" coords="1344,617,1462,644"/>
+<area shape="rect" id="node30" href="$typeinf_8H.html" title="hobbes/lang/typeinf.H" alt="" coords="2063,319,2212,345"/>
+<area shape="rect" id="node31" href="$tyunqualify_8H.html" title="hobbes/lang/tyunqualify.H" alt="" coords="2338,319,2511,345"/>
+<area shape="rect" id="node32" href="$obj_8H.html" title="hobbes/lang/preds/subtype\l/obj.H" alt="" coords="1346,229,1524,271"/>
+<area shape="rect" id="node33" href="$typepreds_8H.html" title="hobbes/lang/typepreds.H" alt="" coords="2181,237,2348,263"/>
+<area shape="rect" id="node37" href="$jitcc_8H.html" title="hobbes/eval/jitcc.H" alt="" coords="1701,237,1836,263"/>
+<area shape="rect" id="node39" href="$llvm_8H.html" title="hobbes/util/llvm.H" alt="" coords="1650,393,1777,420"/>
+<area shape="rect" id="node41" href="$util_2func_8H.html" title="hobbes/util/func.H" alt="" coords="1860,237,1988,263"/>
+<area shape="rect" id="node11" href="$ptr_8H.html" title="hobbes/util/ptr.H" alt="" coords="2912,617,3030,644"/>
+<area shape="rect" id="node16" href="$array_8H.html" title="hobbes/util/array.H" alt="" coords="1600,692,1732,719"/>
+<area shape="rect" id="node26" href="$lannotation_8H.html" title="hobbes/util/lannotation.H" alt="" coords="2365,543,2532,569"/>
+<area shape="rect" id="node6" href="$hash_8H.html" title="hobbes/util/hash.H" alt="" coords="3259,692,3390,719"/>
+<area shape="rect" id="node29" href="$preprocessor_8H.html" title="hobbes/util/preprocessor.H" alt="" coords="918,468,1096,495"/>
+<area shape="rect" id="node35" href="$module_8H.html" title="hobbes/lang/module.H" alt="" coords="2848,319,3000,345"/>
+<area shape="rect" id="node36" href="$pattern_8H.html" title="hobbes/lang/pat/pattern.H" alt="" coords="3025,319,3197,345"/>
+<area shape="rect" id="node40" href="$eval_2func_8H.html" title="hobbes/eval/func.H" alt="" coords="1752,319,1886,345"/>
+</map>
