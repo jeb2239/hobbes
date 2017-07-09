@@ -1,0 +1,11 @@
+<map id="include/hobbes/ipc/net.H" name="include/hobbes/ipc/net.H">
+<area shape="rect" id="node2" href="$evaluator_8C.html" title="bin/hi/evaluator.C" alt="" coords="5,95,129,121"/>
+<area shape="rect" id="node3" href="$bin_2hi_2funcdefs_8C.html" title="bin/hi/funcdefs.C" alt="" coords="153,95,275,121"/>
+<area shape="rect" id="node4" href="$hi_2main_8C.html" title="bin/hi/main.C" alt="" coords="299,95,398,121"/>
+<area shape="rect" id="node5" href="$batchrecv_8C.html" title="bin/hog/batchrecv.C" alt="" coords="422,95,561,121"/>
+<area shape="rect" id="node6" href="$batchsend_8C.html" title="bin/hog/batchsend.C" alt="" coords="585,95,728,121"/>
+<area shape="rect" id="node7" href="$local_8C.html" title="bin/hog/local.C" alt="" coords="753,95,862,121"/>
+<area shape="rect" id="node8" href="$httpd_8C.html" title="lib/hobbes/events/httpd.C" alt="" coords="886,95,1057,121"/>
+<area shape="rect" id="node9" href="$nbindings_8C.html" title="lib/hobbes/ipc/nbindings.C" alt="" coords="1081,95,1256,121"/>
+<area shape="rect" id="node10" href="$net_8C.html" title="lib/hobbes/ipc/net.C" alt="" coords="1281,95,1419,121"/>
+</map>

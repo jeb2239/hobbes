@@ -1,0 +1,11 @@
+<map id="include/hobbes/parse/data.H" name="include/hobbes/parse/data.H">
+<area shape="rect" id="node2" href="$lalr_8H.html" title="include/hobbes/parse\l/lalr.H" alt="" coords="193,184,338,225"/>
+<area shape="rect" id="node6" href="$terminal_8H.html" title="include/hobbes/parse\l/terminal.H" alt="" coords="347,95,493,136"/>
+<area shape="rect" id="node10" href="$parse_2data_8C.html" title="lib/hobbes/parse/data.C" alt="" coords="517,102,677,129"/>
+<area shape="rect" id="node3" href="$lalr_8C.html" title="lib/hobbes/parse/lalr.C" alt="" coords="5,281,157,307"/>
+<area shape="rect" id="node4" href="$parse_2parser_8C.html" title="lib/hobbes/parse/parser.C" alt="" coords="349,281,520,307"/>
+<area shape="rect" id="node5" href="$hexpr_8parse_8C.html" title="lib/hobbes/read/pgen\l/hexpr.parse.C" alt="" coords="182,273,325,315"/>
+<area shape="rect" id="node7" href="$parse_2parser_8H.html" title="include/hobbes/parse\l/parser.H" alt="" coords="362,184,507,225"/>
+<area shape="rect" id="node9" href="$terminal_8C.html" title="lib/hobbes/parse/terminal.C" alt="" coords="532,191,713,218"/>
+<area shape="rect" id="node8" href="$grammar_8C.html" title="lib/hobbes/parse/grammar.C" alt="" coords="544,281,731,307"/>
+</map>

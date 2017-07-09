@@ -1,0 +1,4 @@
+<map id="hobbes::storage::rpipe" name="hobbes::storage::rpipe">
+<area shape="rect" id="node5" href="$classhobbes_1_1storage_1_1reader.html" title="{hobbes::storage::reader\n||+ reader()\l+ reader()\l+ ~reader()\l+ config()\l+ meta()\l+ next()\l+ pollNext()\l+ pop()\l&#45; waitState()\l&#45; readIndex()\l&#45; writeIndex()\l&#45; value()\l&#45; nextIndex()\l}" alt="" coords="155,344,314,597"/>
+<area shape="rect" id="node7" href="$structhobbes_1_1storage_1_1pqueue__config.html" title="{hobbes::storage::pqueue\l_config\n||+ pqueue_config()\l+ pqueue_config()\l}" alt="" coords="349,175,515,281"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="hobbes::jitcc" name="hobbes::jitcc">
+<area shape="rect" id="node10" href="$classhobbes_1_1region.html" title="{hobbes::region\n||+ region()\l+ ~region()\l+ malloc()\l+ clear()\l+ reset()\l+ allocated()\l+ used()\l+ wasted()\l+ show()\l+ abortAtMemCeiling()\l&#45; newpage()\l&#45; allocpage()\l&#45; freepage()\l&#45; freepages()\l}" alt="" coords="1119,315,1272,583"/>
+<area shape="rect" id="node11" href="$structhobbes_1_1mempage.html" title="{hobbes::mempage\n||}" alt="" coords="1267,160,1396,237"/>
+</map>

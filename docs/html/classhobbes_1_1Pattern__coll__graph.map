@@ -1,0 +1,4 @@
+<map id="hobbes::Pattern" name="hobbes::Pattern">
+<area shape="rect" id="node2" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n||+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="84,373,267,583"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1LexicalAnnotation.html" title="{hobbes::LexicalAnnotation\n||+ LexicalAnnotation()\l+ filename()\l+ lineDesc()\l+ lines()\l+ null()\l+ merge()\l}" alt="" coords="88,160,263,311"/>
+</map>

@@ -1,0 +1,6 @@
+<map id="hobbes::net::AsyncRPCFunc&lt; R(Args...)&gt;" name="hobbes::net::AsyncRPCFunc&lt; R(Args...)&gt;">
+<area shape="rect" id="node2" href="$structhobbes_1_1net_1_1AsyncReader.html" title="{hobbes::net::AsyncReader\n||+ readAndFinish()\l}" alt="" coords="5,145,183,223"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1net_1_1io.html" title="{hobbes::net::io\&lt; R \&gt;\n||}" alt="" coords="207,145,349,223"/>
+<area shape="rect" id="node4" href="$structhobbes_1_1net_1_1io.html" title="{hobbes::net::io\&lt; T, P \&gt;\n||}" alt="" coords="199,5,357,83"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1net_1_1AsyncScheduler.html" title="{hobbes::net::AsyncScheduler\n||+ enqueue()\l}" alt="" coords="373,145,567,223"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="hobbes::Func" name="hobbes::Func">
+<area shape="rect" id="node2" href="$classhobbes_1_1MonoTypeCase.html" title="{hobbes::MonoTypeCase\l\&lt; Func \&gt;\n||+ MonoTypeCase()\l}" alt="" coords="251,544,415,636"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1MonoType.html" title="{hobbes::MonoType\n||+ ~MonoType()\l+ show()\l+ operator==()\l+ case_id()\l+ makeType()\l# MonoType()\l# makeType()\l}" alt="" coords="192,175,325,340"/>
+<area shape="rect" id="node7" href="$classhobbes_1_1MonoTypeCase.html" title="{hobbes::MonoTypeCase\l\&lt; Case \&gt;\n||+ MonoTypeCase()\l}" alt="" coords="251,389,415,481"/>
+</map>

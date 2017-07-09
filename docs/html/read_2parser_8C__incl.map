@@ -1,0 +1,16 @@
+<map id="lib/hobbes/read/parser.C" name="lib/hobbes/read/parser.C">
+<area shape="rect" id="node2" href="$module_8H.html" title="hobbes/lang/module.H" alt="" coords="1023,155,1175,181"/>
+<area shape="rect" id="node26" href="$expr_8H.html" title="hobbes/lang/expr.H" alt="" coords="1011,229,1146,256"/>
+<area shape="rect" id="node27" href="$pattern_8H.html" title="hobbes/lang/pat/pattern.H" alt="" coords="1250,155,1422,181"/>
+<area shape="rect" id="node29" href="$grammar_8H.html" title="hobbes/parse/grammar.H" alt="" coords="1867,155,2037,181"/>
+<area shape="rect" id="node30" href="$hexpr_8parse_8H.html" title="hobbes/read/pgen/hexpr.parse.H" alt="" coords="1424,80,1635,107"/>
+<area shape="rect" id="node31" href="$read_2parser_8H.html" title="hobbes/read/parser.H" alt="" coords="1148,80,1295,107"/>
+<area shape="rect" id="node32" href="$autorelease_8H.html" title="hobbes/util/autorelease.H" alt="" coords="2171,229,2341,256"/>
+<area shape="rect" id="node3" href="$type_8H.html" title="hobbes/lang/type.H" alt="" coords="911,304,1046,331"/>
+<area shape="rect" id="node10" href="$ptr_8H.html" title="hobbes/util/ptr.H" alt="" coords="553,453,671,480"/>
+<area shape="rect" id="node25" href="$lannotation_8H.html" title="hobbes/util/lannotation.H" alt="" coords="1219,379,1386,405"/>
+<area shape="rect" id="node4" href="$hash_8H.html" title="hobbes/util/hash.H" alt="" coords="653,528,784,555"/>
+<area shape="rect" id="node15" href="$array_8H.html" title="hobbes/util/array.H" alt="" coords="809,528,941,555"/>
+<area shape="rect" id="node21" href="$util_2str_8H.html" title="hobbes/util/str.H" alt="" coords="1267,453,1386,480"/>
+<area shape="rect" id="node28" href="$regex_8H.html" title="hobbes/lang/pat/regex.H" alt="" coords="1425,304,1589,331"/>
+</map>

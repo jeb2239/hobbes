@@ -1,0 +1,16 @@
+<map id="hobbes::ModuleDefCase&lt; Case &gt;" name="hobbes::ModuleDefCase&lt; Case &gt;">
+<area shape="rect" id="node4" href="$structhobbes_1_1ModuleDefCase.html" title="{hobbes::ModuleDefCase\l\&lt; MVarDef \&gt;\n||+ ModuleDefCase()\l}" alt="" coords="5,589,172,681"/>
+<area shape="rect" id="node6" href="$structhobbes_1_1ModuleDefCase.html" title="{hobbes::ModuleDefCase\l\&lt; MTypeDef \&gt;\n||+ ModuleDefCase()\l}" alt="" coords="196,589,363,681"/>
+<area shape="rect" id="node8" href="$structhobbes_1_1ModuleDefCase.html" title="{hobbes::ModuleDefCase\l\&lt; MVarTypeDef \&gt;\n||+ ModuleDefCase()\l}" alt="" coords="387,589,553,681"/>
+<area shape="rect" id="node10" href="$structhobbes_1_1ModuleDefCase.html" title="{hobbes::ModuleDefCase\l\&lt; ClassDef \&gt;\n||+ ModuleDefCase()\l}" alt="" coords="577,589,744,681"/>
+<area shape="rect" id="node12" href="$structhobbes_1_1ModuleDefCase.html" title="{hobbes::ModuleDefCase\l\&lt; MImport \&gt;\n||+ ModuleDefCase()\l}" alt="" coords="768,589,935,681"/>
+<area shape="rect" id="node14" href="$structhobbes_1_1ModuleDefCase.html" title="{hobbes::ModuleDefCase\l\&lt; InstanceDef \&gt;\n||+ ModuleDefCase()\l}" alt="" coords="959,589,1125,681"/>
+<area shape="rect" id="node2" href="$structhobbes_1_1ModuleDef.html" title="{hobbes::ModuleDef\n|&#45; cid\l|+ ~ModuleDef()\l+ show()\l+ case_id()\l# ModuleDef()\l}" alt="" coords="497,264,632,385"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n|&#45; lannotation\l|+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="473,5,656,215"/>
+<area shape="rect" id="node5" href="$classhobbes_1_1MVarDef.html" title="{hobbes::MVarDef\n|+ type_case_id\l&#45; vargl\l&#45; expr\l|+ MVarDef()\l+ varWithArgs()\l+ varExpr()\l+ show()\l}" alt="" coords="27,775,151,925"/>
+<area shape="rect" id="node7" href="$classhobbes_1_1MTypeDef.html" title="{hobbes::MTypeDef\n|+ type_case_id\l&#45; v\l&#45; tname\l&#45; targs\l&#45; t\l|+ MTypeDef()\l+ visibility()\l+ name()\l+ arguments()\l+ type()\l+ show()\l}" alt="" coords="213,745,346,955"/>
+<area shape="rect" id="node9" href="$classhobbes_1_1MVarTypeDef.html" title="{hobbes::MVarTypeDef\n|+ type_case_id\l&#45; vname\l&#45; qty\l|+ MVarTypeDef()\l+ varName()\l+ varType()\l+ show()\l}" alt="" coords="393,775,547,925"/>
+<area shape="rect" id="node11" href="$classhobbes_1_1ClassDef.html" title="{hobbes::ClassDef\n|+ type_case_id\l&#45; cs\l&#45; cname\l&#45; tvars\l&#45; fdeps\l&#45; mvtydefs\l|+ ClassDef()\l+ constraints()\l+ name()\l+ vars()\l+ fundeps()\l+ members()\l+ show()\l}" alt="" coords="597,731,724,969"/>
+<area shape="rect" id="node13" href="$classhobbes_1_1MImport.html" title="{hobbes::MImport\n|+ type_case_id\l&#45; p\l&#45; n\l|+ MImport()\l+ path()\l+ name()\l+ show()\l}" alt="" coords="791,775,911,925"/>
+<area shape="rect" id="node15" href="$classhobbes_1_1InstanceDef.html" title="{hobbes::InstanceDef\n|+ type_case_id\l&#45; cs\l&#45; cname\l&#45; targs\l&#45; mdefs\l|+ InstanceDef()\l+ constraints()\l+ className()\l+ args()\l+ members()\l+ show()\l}" alt="" coords="971,745,1113,955"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="hobbes::Pattern" name="hobbes::Pattern">
+<area shape="rect" id="node3" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; Case \&gt;\n||+ PatternCase()\l}" alt="" coords="469,493,614,585"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; MatchRegex \&gt;\n||+ PatternCase()\l}" alt="" coords="371,648,517,740"/>
+<area shape="rect" id="node6" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; MatchRecord \&gt;\n||+ PatternCase()\l}" alt="" coords="193,648,338,740"/>
+<area shape="rect" id="node8" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; MatchVariant \&gt;\n||+ PatternCase()\l}" alt="" coords="7,648,153,740"/>
+<area shape="rect" id="node10" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; MatchAny \&gt;\n||+ PatternCase()\l}" alt="" coords="549,648,694,740"/>
+<area shape="rect" id="node12" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; MatchLiteral \&gt;\n||+ PatternCase()\l}" alt="" coords="773,648,918,740"/>
+<area shape="rect" id="node14" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; MatchArray \&gt;\n||+ PatternCase()\l}" alt="" coords="970,648,1115,740"/>
+<area shape="rect" id="node2" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n|&#45; lannotation\l|+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="450,5,633,215"/>
+<area shape="rect" id="node5" href="$classhobbes_1_1MatchRegex.html" title="{hobbes::MatchRegex\n|+ type_case_id\l&#45; regex\l|+ MatchRegex()\l+ MatchRegex()\l+ text()\l+ value()\l+ show()\l+ operator==()\l+ toRegex()\l&#45; assignSubNames()\l}" alt="" coords="371,811,517,1006"/>
+<area shape="rect" id="node7" href="$classhobbes_1_1MatchRecord.html" title="{hobbes::MatchRecord\n|+ type_case_id\l&#45; fs\l&#45; is\l|+ MatchRecord()\l+ pattern()\l+ indexes()\l+ size()\l+ fields()\l+ fields()\l+ show()\l+ operator==()\l&#45; assignSubNames()\l&#45; show()\l}" alt="" coords="190,789,341,1028"/>
+<area shape="rect" id="node9" href="$classhobbes_1_1MatchVariant.html" title="{hobbes::MatchVariant\n|+ type_case_id\l&#45; lbl\l&#45; p\l|+ MatchVariant()\l+ label()\l+ value()\l+ show()\l+ operator==()\l&#45; assignSubNames()\l}" alt="" coords="5,819,155,999"/>
+<area shape="rect" id="node11" href="$classhobbes_1_1MatchAny.html" title="{hobbes::MatchAny\n|+ type_case_id\l&#45; vn\l|+ MatchAny()\l+ value()\l+ show()\l+ operator==()\l&#45; assignSubNames()\l}" alt="" coords="551,833,692,984"/>
+<area shape="rect" id="node13" href="$classhobbes_1_1MatchLiteral.html" title="{hobbes::MatchLiteral\n|+ type_case_id\l&#45; p\l&#45; e\l|+ MatchLiteral()\l+ MatchLiteral()\l+ expression()\l+ equivConstant()\l+ show()\l+ operator==()\l&#45; assignSubNames()\l}" alt="" coords="774,811,917,1006"/>
+<area shape="rect" id="node15" href="$classhobbes_1_1MatchArray.html" title="{hobbes::MatchArray\n|+ type_case_id\l&#45; ps\l&#45; idxs\l|+ MatchArray()\l+ pattern()\l+ indexes()\l+ size()\l+ indexes()\l+ show()\l+ operator==()\l&#45; assignSubNames()\l}" alt="" coords="972,804,1113,1013"/>
+</map>

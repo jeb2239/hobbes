@@ -1,0 +1,7 @@
+<map id="hobbes::ConnectionP::StripConnQual" name="hobbes::ConnectionP::StripConnQual">
+<area shape="rect" id="node2" href="$structhobbes_1_1switchExprTyFn.html" title="{hobbes::switchExprTyFn\n||+ withTy()\l+ wrapWithTy()\l+ withConst()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 9 more...\l}" alt="" coords="47,881,213,1105"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1switchExprC.html" title="{hobbes::switchExprC\l\&lt; ExprPtr \&gt;\n||+ withConst()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 16 more...\l}" alt="" coords="57,593,203,832"/>
+<area shape="rect" id="node4" href="$structhobbes_1_1switchExpr.html" title="{hobbes::switchExpr\l\&lt; ExprPtr \&gt;\n||+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 15 more...\l}" alt="" coords="5,292,143,531"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1switchExpr.html" title="{hobbes::switchExpr\&lt; T \&gt;\n||+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 15 more...\l}" alt="" coords="91,5,260,229"/>
+<area shape="rect" id="node6" href="$structhobbes_1_1switchExprC.html" title="{hobbes::switchExprC\&lt; T \&gt;\n||+ withConst()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 16 more...\l}" alt="" coords="167,299,346,523"/>
+</map>

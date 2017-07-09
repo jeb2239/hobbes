@@ -1,0 +1,4 @@
+<map id="hobbes::MonoTypeUnifier" name="hobbes::MonoTypeUnifier">
+<area shape="rect" id="node5" href="$classhobbes_1_1equivalence__mapping.html" title="{hobbes::equivalence\l_mapping\&lt; MonoTypePtr,\l UTypeRec, LiftUType,\l MoreDefinedType \&gt;\n||+ equivalence_mapping()\l+ size()\l+ find()\l+ join()\l+ merge()\l+ values()\l&#45; findNode()\l&#45; findRepresentative()\l}" alt="" coords="458,432,630,656"/>
+<area shape="rect" id="node7" href="$classhobbes_1_1equivalence__mapping.html" title="{hobbes::equivalence\l_mapping\&lt; K, V, KVLift,\l VPlus \&gt;\n||+ equivalence_mapping()\l+ size()\l+ find()\l+ join()\l+ merge()\l+ values()\l&#45; findNode()\l&#45; findRepresentative()\l}" alt="" coords="529,145,695,355"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$structhobbes_1_1Regex.html" title="hobbes::Regex" alt="" coords="5,132,116,159"/>
+<area shape="rect" id="node2" href="$structhobbes_1_1RBind.html" title="hobbes::RBind" alt="" coords="184,5,292,32"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1RCharRange.html" title="hobbes::RCharRange" alt="" coords="164,56,312,83"/>
+<area shape="rect" id="node4" href="$structhobbes_1_1REither.html" title="hobbes::REither" alt="" coords="180,107,296,133"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1REps.html" title="hobbes::REps" alt="" coords="185,157,291,184"/>
+<area shape="rect" id="node6" href="$structhobbes_1_1RSeq.html" title="hobbes::RSeq" alt="" coords="185,208,291,235"/>
+<area shape="rect" id="node7" href="$structhobbes_1_1RStar.html" title="hobbes::RStar" alt="" coords="185,259,291,285"/>
+</map>

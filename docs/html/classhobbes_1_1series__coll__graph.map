@@ -1,0 +1,6 @@
+<map id="hobbes::series&lt; T &gt;" name="hobbes::series&lt; T &gt;">
+<area shape="rect" id="node2" href="$classhobbes_1_1StoredSeries.html" title="{hobbes::StoredSeries\n||+ StoredSeries()\l+ ~StoredSeries()\l+ storageType()\l+ record()\l+ bindAs()\l+ writePosition()\l&#45; consBatchNode()\l&#45; restartFromBatchNode()\l&#45; allocBatchNode()\l&#45; allocBatchNode()\l}" alt="" coords="478,948,649,1157"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1writer.html" title="{hobbes::writer\n||+ writer()\l+ define()\l+ define()\l+ store()\l+ store()\l+ store()\l+ store()\l+ store()\l+ store()\l+ store()\land 9 more...\l&#45; allocNamed()\l&#45; allocAnon()\l}" alt="" coords="342,603,449,856"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1reader.html" title="{hobbes::reader\n||+ reader()\l+ reader()\l+ ~reader()\l+ file()\l+ size()\l+ signature()\l+ lookup()\l+ offsetOf()\l+ load()\l+ unmap()\land 21 more...\l}" alt="" coords="635,329,743,553"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1imagefile.html" title="{hobbes::imagefile\n||+ imagefile()\l}" alt="" coords="552,189,676,267"/>
+</map>

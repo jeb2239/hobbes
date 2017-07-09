@@ -1,0 +1,7 @@
+<map id="hobbes::compileExpF" name="hobbes::compileExpF">
+<area shape="rect" id="node2" href="$structhobbes_1_1switchExpr.html" title="{hobbes::switchExpr\l\&lt; llvm::Value *\&gt;\n||+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 15 more...\l}" alt="" coords="231,697,368,935"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1switchExpr.html" title="{hobbes::switchExpr\&lt; T \&gt;\n||+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 15 more...\l}" alt="" coords="5,337,175,561"/>
+<area shape="rect" id="node5" href="$classhobbes_1_1jitcc.html" title="{hobbes::jitcc\n||+ jitcc()\l+ ~jitcc()\l+ builder()\l+ module()\l+ getSymbolAddress()\l+ dump()\l+ defineGlobal()\l+ bindGlobal()\l+ isDefined()\l+ compile()\land 21 more...\l&#45; getMachineCode()\l&#45; unsafeCompileFunctions()\l&#45; pushGlobalRegion()\l&#45; popGlobalRegion()\l&#45; loadConstant()\l&#45; maybeRefGlobal()\l&#45; refGlobal()\l&#45; maybeRefGlobalV()\l}" alt="" coords="895,645,1077,987"/>
+<area shape="rect" id="node14" href="$classhobbes_1_1region.html" title="{hobbes::region\n||+ region()\l+ ~region()\l+ malloc()\l+ clear()\l+ reset()\l+ allocated()\l+ used()\l+ wasted()\l+ show()\l+ abortAtMemCeiling()\l&#45; newpage()\l&#45; allocpage()\l&#45; freepage()\l&#45; freepages()\l}" alt="" coords="1312,315,1465,583"/>
+<area shape="rect" id="node15" href="$structhobbes_1_1mempage.html" title="{hobbes::mempage\n||}" alt="" coords="1460,160,1589,237"/>
+</map>

@@ -1,0 +1,6 @@
+<map id="hobbes::lift&lt; T, InStruct, P &gt;" name="hobbes::lift&lt; T, InStruct, P &gt;">
+<area shape="rect" id="node2" href="$structhobbes_1_1lift.html" title="{hobbes::lift\&lt; T *,\l InStruct \&gt;\n||+ type()\l}" alt="" coords="205,145,323,237"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1defaultLift_3_01const_01T_01_6_00_01InStruct_01_4.html" title="{hobbes::defaultLift\l\&lt; const T &amp;, InStruct \&gt;\n||}" alt="" coords="5,287,163,379"/>
+<area shape="rect" id="node4" href="$structhobbes_1_1defaultLift_3_01const_01T_01_5_00_01InStruct_01_4.html" title="{hobbes::defaultLift\l\&lt; const T *, InStruct \&gt;\n||}" alt="" coords="187,287,341,379"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1defaultLift_3_01T_01_6_00_01InStruct_01_4.html" title="{hobbes::defaultLift\l\&lt; T &amp;, InStruct \&gt;\n||}" alt="" coords="365,287,494,379"/>
+</map>

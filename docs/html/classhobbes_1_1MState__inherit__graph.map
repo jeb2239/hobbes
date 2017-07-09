@@ -1,0 +1,11 @@
+<map id="hobbes::MState" name="hobbes::MState">
+<area shape="rect" id="node2" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; Case \&gt;\n||+ MStateCase()\l}" alt="" coords="255,205,400,297"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; FinishExpr \&gt;\n||+ MStateCase()\l}" alt="" coords="184,360,329,452"/>
+<area shape="rect" id="node5" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; LoadVars \&gt;\n||+ MStateCase()\l}" alt="" coords="5,360,151,452"/>
+<area shape="rect" id="node7" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; SwitchVal \&gt;\n||+ MStateCase()\l}" alt="" coords="591,360,736,452"/>
+<area shape="rect" id="node9" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; SwitchVariant \&gt;\n||+ MStateCase()\l}" alt="" coords="399,360,544,452"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1FinishExpr.html" title="{hobbes::FinishExpr\n|+ type_case_id\l&#45; exp\l|+ FinishExpr()\l+ expr()\l+ stamp()\l}" alt="" coords="189,531,324,652"/>
+<area shape="rect" id="node6" href="$classhobbes_1_1LoadVars.html" title="{hobbes::LoadVars\n|+ type_case_id\l&#45; ds\l&#45; next\l|+ LoadVars()\l+ defs()\l+ nextState()\l+ stamp()\l}" alt="" coords="15,516,141,667"/>
+<area shape="rect" id="node8" href="$classhobbes_1_1SwitchVal.html" title="{hobbes::SwitchVal\n|+ type_case_id\l&#45; var\l&#45; jmps\l&#45; def\l|+ SwitchVal()\l+ switchVar()\l+ jumps()\l+ defaultState()\l+ stamp()\l}" alt="" coords="598,501,729,681"/>
+<area shape="rect" id="node10" href="$classhobbes_1_1SwitchVariant.html" title="{hobbes::SwitchVariant\n|+ type_case_id\l&#45; var\l&#45; jmps\l&#45; def\l|+ SwitchVariant()\l+ switchVar()\l+ jumps()\l+ defaultState()\l+ stamp()\l}" alt="" coords="395,501,548,681"/>
+</map>

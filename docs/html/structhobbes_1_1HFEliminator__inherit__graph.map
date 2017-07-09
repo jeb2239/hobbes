@@ -1,0 +1,9 @@
+<map id="hobbes::HFEliminator" name="hobbes::HFEliminator">
+<area shape="rect" id="node2" href="$classhobbes_1_1AddDBFieldSignal.html" title="{hobbes::AddDBFieldSignal\n||+ refine()\l+ satisfied()\l+ satisfiable()\l+ unqualify()\l+ name()\l}" alt="" coords="5,211,184,347"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1DBFieldLookup.html" title="{hobbes::DBFieldLookup\n||+ refine()\l+ satisfied()\l+ satisfiable()\l+ unqualify()\l+ name()\l}" alt="" coords="209,211,370,347"/>
+<area shape="rect" id="node4" href="$structhobbes_1_1HFLookupEliminator.html" title="{hobbes::HFLookupEliminator\n||+ satisfied()\l+ satisfiable()\l+ refine()\l+ unqualify()\l+ name()\l}" alt="" coords="394,211,585,347"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1HFRecordEliminator.html" title="{hobbes::HFRecordEliminator\n||+ satisfied()\l+ satisfiable()\l+ refine()\l+ unqualify()\l+ name()\l}" alt="" coords="609,211,799,347"/>
+<area shape="rect" id="node6" href="$structhobbes_1_1HFSLookupEliminator.html" title="{hobbes::HFSLookupEliminator\n||+ satisfied()\l+ satisfiable()\l+ refine()\l+ unqualify()\l+ name()\l}" alt="" coords="823,211,1022,347"/>
+<area shape="rect" id="node7" href="$structhobbes_1_1HFTEnvLookupEliminator.html" title="{hobbes::HFTEnvLookupEliminator\n||+ satisfied()\l+ satisfiable()\l+ refine()\l+ unqualify()\l+ name()\l}" alt="" coords="1047,211,1268,347"/>
+<area shape="rect" id="node8" href="$classhobbes_1_1ProcManager.html" title="{hobbes::ProcManager\n|&#45; procs\l|+ spawnedPid()\l+ isSpawnedPid()\l+ satisfied()\l+ satisfiable()\l+ refine()\l+ unqualify()\l+ name()\l&#45; lp()\l}" alt="" coords="1292,189,1441,369"/>
+</map>

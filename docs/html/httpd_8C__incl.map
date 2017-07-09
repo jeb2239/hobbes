@@ -1,0 +1,11 @@
+<map id="lib/hobbes/events/httpd.C" name="lib/hobbes/events/httpd.C">
+<area shape="rect" id="node2" href="$events_8H.html" title="hobbes/events/events.H" alt="" coords="711,80,875,107"/>
+<area shape="rect" id="node3" href="$httpd_8H.html" title="hobbes/events/httpd.H" alt="" coords="925,304,1080,331"/>
+<area shape="rect" id="node7" href="$ipc_2net_8H.html" title="hobbes/ipc/net.H" alt="" coords="899,80,1021,107"/>
+<area shape="rect" id="node24" href="$util_2str_8H.html" title="hobbes/util/str.H" alt="" coords="1169,304,1287,331"/>
+<area shape="rect" id="node8" href="$type_8H.html" title="hobbes/lang/type.H" alt="" coords="833,155,967,181"/>
+<area shape="rect" id="node9" href="$hash_8H.html" title="hobbes/util/hash.H" alt="" coords="552,379,683,405"/>
+<area shape="rect" id="node13" href="$ptr_8H.html" title="hobbes/util/ptr.H" alt="" coords="389,304,507,331"/>
+<area shape="rect" id="node18" href="$array_8H.html" title="hobbes/util/array.H" alt="" coords="1478,379,1610,405"/>
+<area shape="rect" id="node27" href="$lannotation_8H.html" title="hobbes/util/lannotation.H" alt="" coords="817,229,983,256"/>
+</map>

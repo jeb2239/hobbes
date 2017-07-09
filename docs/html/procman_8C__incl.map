@@ -1,0 +1,19 @@
+<map id="lib/hobbes/ipc/procman.C" name="lib/hobbes/ipc/procman.C">
+<area shape="rect" id="node2" href="$procman_8H.html" title="hobbes/ipc/procman.H" alt="" coords="498,80,651,107"/>
+<area shape="rect" id="node23" href="$util_2str_8H.html" title="hobbes/util/str.H" alt="" coords="1375,528,1494,555"/>
+<area shape="rect" id="node31" href="$class_8H.html" title="hobbes/lang/preds/class.H" alt="" coords="709,80,886,107"/>
+<area shape="rect" id="node3" href="$hasfield_8H.html" title="hobbes/lang/preds/hasfield.H" alt="" coords="479,155,670,181"/>
+<area shape="rect" id="node29" href="$prepl_8H.html" title="hobbes/ipc/prepl.H" alt="" coords="99,155,229,181"/>
+<area shape="rect" id="node4" href="$tyunqualify_8H.html" title="hobbes/lang/tyunqualify.H" alt="" coords="745,229,919,256"/>
+<area shape="rect" id="node5" href="$type_8H.html" title="hobbes/lang/type.H" alt="" coords="938,379,1073,405"/>
+<area shape="rect" id="node27" href="$lannotation_8H.html" title="hobbes/util/lannotation.H" alt="" coords="801,453,967,480"/>
+<area shape="rect" id="node28" href="$expr_8H.html" title="hobbes/lang/expr.H" alt="" coords="645,304,779,331"/>
+<area shape="rect" id="node6" href="$hash_8H.html" title="hobbes/util/hash.H" alt="" coords="565,603,696,629"/>
+<area shape="rect" id="node12" href="$ptr_8H.html" title="hobbes/util/ptr.H" alt="" coords="303,528,422,555"/>
+<area shape="rect" id="node17" href="$array_8H.html" title="hobbes/util/array.H" alt="" coords="1643,603,1775,629"/>
+<area shape="rect" id="node32" href="$typemap_8H.html" title="hobbes/lang/typemap.H" alt="" coords="1763,155,1923,181"/>
+<area shape="rect" id="node33" href="$trie_8H.html" title="hobbes/util/trie.H" alt="" coords="1937,229,2058,256"/>
+<area shape="rect" id="node34" href="$util_2variant_8H.html" title="hobbes/util/variant.H" alt="" coords="1995,304,2138,331"/>
+<area shape="rect" id="node35" href="$typeinf_8H.html" title="hobbes/lang/typeinf.H" alt="" coords="1443,229,1592,256"/>
+<area shape="rect" id="node36" href="$unionfind_8H.html" title="hobbes/util/unionfind.H" alt="" coords="497,528,652,555"/>
+</map>

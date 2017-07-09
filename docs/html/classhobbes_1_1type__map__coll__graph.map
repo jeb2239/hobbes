@@ -1,0 +1,9 @@
+<map id="hobbes::type_map&lt; V &gt;" name="hobbes::type_map&lt; V &gt;">
+<area shape="rect" id="node2" href="$classhobbes_1_1prefix__tree.html" title="{hobbes::prefix_tree\l\&lt; MonoTypePtr, V, MTyMap \&gt;\n||+ prefix_tree()\l+ ~prefix_tree()\l+ insert()\l+ insert()\l+ lookup()\l+ lookup()\l+ values()\l+ values()\l+ rootPoint()\l+ moveTo()\l+ keysAt()\l+ keysAt()\l+ keyPointsAt()\l+ valueAt()\l&#45; makeNode()\l&#45; findNode()\l}" alt="" coords="290,1499,490,1811"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1prefix__tree__node.html" title="{hobbes::prefix_tree\l_node\&lt; K, V, KMap \&gt;\n||+ ~prefix_tree_node()\l+ values()\l}" alt="" coords="295,955,445,1061"/>
+<area shape="rect" id="node13" href="$classhobbes_1_1prefix__tree.html" title="{hobbes::prefix_tree\l\&lt; K, V, KMap \&gt;\n||+ prefix_tree()\l+ ~prefix_tree()\l+ insert()\l+ lookup()\l+ insert()\l+ lookup()\l+ values()\l+ values()\l+ rootPoint()\l+ moveTo()\l+ keysAt()\l+ keysAt()\l+ keyPointsAt()\l+ valueAt()\l&#45; makeNode()\l&#45; findNode()\l}" alt="" coords="403,1124,537,1436"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; unit, V \&gt;\n||+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="187,712,361,892"/>
+<area shape="rect" id="node11" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; Ctors \&gt;\n||+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="191,469,357,649"/>
+<area shape="rect" id="node8" href="$structhobbes_1_1maximum.html" title="{hobbes::maximum\&lt; hobbes\l::TAlignOfF, Ctors... \&gt;\n||}" alt="" coords="245,315,428,407"/>
+<area shape="rect" id="node10" href="$structhobbes_1_1maximum.html" title="{hobbes::maximum\&lt; SzP,\l T0, Ts \&gt;\n||}" alt="" coords="383,145,554,237"/>
+</map>

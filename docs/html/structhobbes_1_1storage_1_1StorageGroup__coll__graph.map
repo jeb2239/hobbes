@@ -1,0 +1,5 @@
+<map id="hobbes::storage::StorageGroup&lt; cm &gt;" name="hobbes::storage::StorageGroup&lt; cm &gt;">
+<area shape="rect" id="node8" href="$structhobbes_1_1storage_1_1pqueue__config.html" title="{hobbes::storage::pqueue\l_config\n||+ pqueue_config()\l+ pqueue_config()\l}" alt="" coords="98,175,263,281"/>
+<area shape="rect" id="node11" href="$classhobbes_1_1storage_1_1wpipe.html" title="{hobbes::storage::wpipe\n||+ wpipe()\l+ commit()\l+ hasSpaceFor()\l+ write()\l&#45; markPage()\l&#45; reliable()\l&#45; stepPage()\l}" alt="" coords="357,631,514,796"/>
+<area shape="rect" id="node5" href="$classhobbes_1_1storage_1_1writer.html" title="{hobbes::storage::writer\n||+ writer()\l+ ~writer()\l+ config()\l+ next()\l+ pollNext()\l+ push()\l&#45; waitState()\l&#45; readIndex()\l&#45; writeIndex()\l&#45; value()\l&#45; nextIndex()\l}" alt="" coords="186,344,341,568"/>
+</map>

@@ -1,0 +1,114 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$classhobbes_1_1LexicallyAnnotated.html" title="hobbes::LexicallyAnnotated" alt="" coords="5,1953,188,1980"/>
+<area shape="rect" id="node2" href="$classhobbes_1_1Expr.html" title="hobbes::Expr" alt="" coords="287,436,385,463"/>
+<area shape="rect" id="node55" href="$classhobbes_1_1GrammarValue.html" title="hobbes::GrammarValue" alt="" coords="257,1339,415,1365"/>
+<area shape="rect" id="node58" href="$structhobbes_1_1ModuleDef.html" title="hobbes::ModuleDef" alt="" coords="269,1627,403,1653"/>
+<area shape="rect" id="node72" href="$classhobbes_1_1Pattern.html" title="hobbes::Pattern" alt="" coords="279,1953,393,1980"/>
+<area shape="rect" id="node86" href="$classhobbes_1_1TCInstance.html" title="hobbes::TCInstance" alt="" coords="266,2004,406,2031"/>
+<area shape="rect" id="node87" href="$classhobbes_1_1TCInstanceFn.html" title="hobbes::TCInstanceFn" alt="" coords="259,2055,413,2081"/>
+<area shape="rect" id="node88" href="$classhobbes_1_1TClass.html" title="hobbes::TClass" alt="" coords="279,2105,393,2132"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; AIndex \&gt;" alt="" coords="494,5,689,32"/>
+<area shape="rect" id="node5" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; App \&gt;" alt="" coords="503,56,680,83"/>
+<area shape="rect" id="node7" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Assign \&gt;" alt="" coords="494,107,689,133"/>
+<area shape="rect" id="node9" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Assump \&gt;" alt="" coords="490,157,693,184"/>
+<area shape="rect" id="node11" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Fn \&gt;" alt="" coords="507,208,676,235"/>
+<area shape="rect" id="node13" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Let \&gt;" alt="" coords="505,259,677,285"/>
+<area shape="rect" id="node15" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; LetRec \&gt;" alt="" coords="493,309,689,336"/>
+<area shape="rect" id="node17" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; MkArray \&gt;" alt="" coords="490,360,693,387"/>
+<area shape="rect" id="node19" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; MkRecord \&gt;" alt="" coords="484,411,699,437"/>
+<area shape="rect" id="node21" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; MkVariant \&gt;" alt="" coords="485,461,698,488"/>
+<area shape="rect" id="node23" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Pack \&gt;" alt="" coords="499,512,683,539"/>
+<area shape="rect" id="node25" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Proj \&gt;" alt="" coords="503,563,680,589"/>
+<area shape="rect" id="node27" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Switch \&gt;" alt="" coords="494,613,689,640"/>
+<area shape="rect" id="node29" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Unpack \&gt;" alt="" coords="492,664,691,691"/>
+<area shape="rect" id="node31" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Var \&gt;" alt="" coords="504,715,679,741"/>
+<area shape="rect" id="node33" href="$classhobbes_1_1ExprCase.html" title="hobbes::ExprCase\&lt; Case \&gt;" alt="" coords="499,765,684,792"/>
+<area shape="rect" id="node35" href="$classhobbes_1_1Primitive.html" title="hobbes::Primitive" alt="" coords="530,1085,653,1112"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1AIndex.html" title="hobbes::AIndex" alt="" coords="767,5,881,32"/>
+<area shape="rect" id="node6" href="$classhobbes_1_1App.html" title="hobbes::App" alt="" coords="777,56,871,83"/>
+<area shape="rect" id="node8" href="$classhobbes_1_1Assign.html" title="hobbes::Assign" alt="" coords="768,107,880,133"/>
+<area shape="rect" id="node10" href="$classhobbes_1_1Assump.html" title="hobbes::Assump" alt="" coords="764,157,884,184"/>
+<area shape="rect" id="node12" href="$classhobbes_1_1Fn.html" title="hobbes::Fn" alt="" coords="781,208,867,235"/>
+<area shape="rect" id="node14" href="$classhobbes_1_1Let.html" title="hobbes::Let" alt="" coords="779,259,869,285"/>
+<area shape="rect" id="node16" href="$classhobbes_1_1LetRec.html" title="hobbes::LetRec" alt="" coords="767,309,881,336"/>
+<area shape="rect" id="node18" href="$classhobbes_1_1MkArray.html" title="hobbes::MkArray" alt="" coords="763,360,885,387"/>
+<area shape="rect" id="node20" href="$classhobbes_1_1MkRecord.html" title="hobbes::MkRecord" alt="" coords="758,411,890,437"/>
+<area shape="rect" id="node22" href="$classhobbes_1_1MkVariant.html" title="hobbes::MkVariant" alt="" coords="759,461,889,488"/>
+<area shape="rect" id="node24" href="$classhobbes_1_1Pack.html" title="hobbes::Pack" alt="" coords="773,512,875,539"/>
+<area shape="rect" id="node26" href="$classhobbes_1_1Proj.html" title="hobbes::Proj" alt="" coords="777,563,871,589"/>
+<area shape="rect" id="node28" href="$classhobbes_1_1Switch.html" title="hobbes::Switch" alt="" coords="768,613,880,640"/>
+<area shape="rect" id="node30" href="$classhobbes_1_1Unpack.html" title="hobbes::Unpack" alt="" coords="765,664,883,691"/>
+<area shape="rect" id="node32" href="$classhobbes_1_1Var.html" title="hobbes::Var" alt="" coords="778,715,870,741"/>
+<area shape="rect" id="node34" href="$classhobbes_1_1Case.html" title="hobbes::Case" alt="" coords="773,765,875,792"/>
+<area shape="rect" id="node36" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Case \&gt;" alt="" coords="747,817,901,858"/>
+<area shape="rect" id="node37" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Bool \&gt;" alt="" coords="747,882,901,923"/>
+<area shape="rect" id="node39" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Byte \&gt;" alt="" coords="747,947,901,989"/>
+<area shape="rect" id="node41" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Char \&gt;" alt="" coords="747,1013,901,1054"/>
+<area shape="rect" id="node43" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Double \&gt;" alt="" coords="747,1078,901,1119"/>
+<area shape="rect" id="node45" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Float \&gt;" alt="" coords="747,1143,901,1185"/>
+<area shape="rect" id="node47" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Int \&gt;" alt="" coords="747,1209,901,1250"/>
+<area shape="rect" id="node49" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Long \&gt;" alt="" coords="747,1274,901,1315"/>
+<area shape="rect" id="node51" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Short \&gt;" alt="" coords="747,1339,901,1381"/>
+<area shape="rect" id="node53" href="$classhobbes_1_1PrimitiveCase.html" title="hobbes::PrimitiveCase\l\&lt; Unit \&gt;" alt="" coords="747,1405,901,1446"/>
+<area shape="rect" id="node38" href="$classhobbes_1_1Bool.html" title="hobbes::Bool" alt="" coords="957,889,1055,916"/>
+<area shape="rect" id="node40" href="$classhobbes_1_1Byte.html" title="hobbes::Byte" alt="" coords="957,955,1055,981"/>
+<area shape="rect" id="node42" href="$classhobbes_1_1Char.html" title="hobbes::Char" alt="" coords="956,1020,1056,1047"/>
+<area shape="rect" id="node44" href="$classhobbes_1_1Double.html" title="hobbes::Double" alt="" coords="949,1085,1063,1112"/>
+<area shape="rect" id="node46" href="$classhobbes_1_1Float.html" title="hobbes::Float" alt="" coords="955,1151,1057,1177"/>
+<area shape="rect" id="node48" href="$classhobbes_1_1Int.html" title="hobbes::Int" alt="" coords="963,1216,1049,1243"/>
+<area shape="rect" id="node50" href="$classhobbes_1_1Long.html" title="hobbes::Long" alt="" coords="956,1281,1056,1308"/>
+<area shape="rect" id="node52" href="$classhobbes_1_1Short.html" title="hobbes::Short" alt="" coords="955,1347,1057,1373"/>
+<area shape="rect" id="node54" href="$classhobbes_1_1Unit.html" title="hobbes::Unit" alt="" coords="958,1412,1054,1439"/>
+<area shape="rect" id="node56" href="$classhobbes_1_1GStr.html" title="hobbes::GStr" alt="" coords="542,1288,641,1315"/>
+<area shape="rect" id="node57" href="$classhobbes_1_1GSymRef.html" title="hobbes::GSymRef" alt="" coords="526,1339,657,1365"/>
+<area shape="rect" id="node59" href="$structhobbes_1_1ModuleDefCase.html" title="hobbes::ModuleDefCase\l\&lt; Case \&gt;" alt="" coords="508,1390,675,1431"/>
+<area shape="rect" id="node60" href="$structhobbes_1_1ModuleDefCase.html" title="hobbes::ModuleDefCase\l\&lt; ClassDef \&gt;" alt="" coords="508,1455,675,1497"/>
+<area shape="rect" id="node62" href="$structhobbes_1_1ModuleDefCase.html" title="hobbes::ModuleDefCase\l\&lt; InstanceDef \&gt;" alt="" coords="508,1521,675,1562"/>
+<area shape="rect" id="node64" href="$structhobbes_1_1ModuleDefCase.html" title="hobbes::ModuleDefCase\l\&lt; MImport \&gt;" alt="" coords="508,1586,675,1627"/>
+<area shape="rect" id="node66" href="$structhobbes_1_1ModuleDefCase.html" title="hobbes::ModuleDefCase\l\&lt; MTypeDef \&gt;" alt="" coords="508,1651,675,1693"/>
+<area shape="rect" id="node68" href="$structhobbes_1_1ModuleDefCase.html" title="hobbes::ModuleDefCase\l\&lt; MVarDef \&gt;" alt="" coords="508,1717,675,1758"/>
+<area shape="rect" id="node70" href="$structhobbes_1_1ModuleDefCase.html" title="hobbes::ModuleDefCase\l\&lt; MVarTypeDef \&gt;" alt="" coords="508,1782,675,1823"/>
+<area shape="rect" id="node61" href="$classhobbes_1_1ClassDef.html" title="hobbes::ClassDef" alt="" coords="761,1471,887,1497"/>
+<area shape="rect" id="node63" href="$classhobbes_1_1InstanceDef.html" title="hobbes::InstanceDef" alt="" coords="753,1528,895,1555"/>
+<area shape="rect" id="node65" href="$classhobbes_1_1MImport.html" title="hobbes::MImport" alt="" coords="764,1593,884,1620"/>
+<area shape="rect" id="node67" href="$classhobbes_1_1MTypeDef.html" title="hobbes::MTypeDef" alt="" coords="757,1659,891,1685"/>
+<area shape="rect" id="node69" href="$classhobbes_1_1MVarDef.html" title="hobbes::MVarDef" alt="" coords="762,1724,886,1751"/>
+<area shape="rect" id="node71" href="$classhobbes_1_1MVarTypeDef.html" title="hobbes::MVarTypeDef" alt="" coords="747,1789,901,1816"/>
+<area shape="rect" id="node73" href="$classhobbes_1_1PatternCase.html" title="hobbes::PatternCase\l\&lt; Case \&gt;" alt="" coords="519,1847,664,1889"/>
+<area shape="rect" id="node74" href="$classhobbes_1_1PatternCase.html" title="hobbes::PatternCase\l\&lt; MatchAny \&gt;" alt="" coords="519,1913,664,1954"/>
+<area shape="rect" id="node76" href="$classhobbes_1_1PatternCase.html" title="hobbes::PatternCase\l\&lt; MatchArray \&gt;" alt="" coords="519,1978,664,2019"/>
+<area shape="rect" id="node78" href="$classhobbes_1_1PatternCase.html" title="hobbes::PatternCase\l\&lt; MatchLiteral \&gt;" alt="" coords="519,2043,664,2085"/>
+<area shape="rect" id="node80" href="$classhobbes_1_1PatternCase.html" title="hobbes::PatternCase\l\&lt; MatchRecord \&gt;" alt="" coords="519,2109,664,2150"/>
+<area shape="rect" id="node82" href="$classhobbes_1_1PatternCase.html" title="hobbes::PatternCase\l\&lt; MatchRegex \&gt;" alt="" coords="519,2174,664,2215"/>
+<area shape="rect" id="node84" href="$classhobbes_1_1PatternCase.html" title="hobbes::PatternCase\l\&lt; MatchVariant \&gt;" alt="" coords="519,2239,664,2281"/>
+<area shape="rect" id="node75" href="$classhobbes_1_1MatchAny.html" title="hobbes::MatchAny" alt="" coords="759,1920,889,1947"/>
+<area shape="rect" id="node77" href="$classhobbes_1_1MatchArray.html" title="hobbes::MatchArray" alt="" coords="755,1985,893,2012"/>
+<area shape="rect" id="node79" href="$classhobbes_1_1MatchLiteral.html" title="hobbes::MatchLiteral" alt="" coords="753,2051,895,2077"/>
+<area shape="rect" id="node81" href="$classhobbes_1_1MatchRecord.html" title="hobbes::MatchRecord" alt="" coords="749,2116,899,2143"/>
+<area shape="rect" id="node83" href="$classhobbes_1_1MatchRegex.html" title="hobbes::MatchRegex" alt="" coords="751,2181,897,2208"/>
+<area shape="rect" id="node85" href="$classhobbes_1_1MatchVariant.html" title="hobbes::MatchVariant" alt="" coords="749,2247,899,2273"/>
+<area shape="rect" id="node89" href="$structhobbes_1_1Unqualifier.html" title="hobbes::Unqualifier" alt="" coords="29,2688,164,2715"/>
+<area shape="rect" id="node90" href="$classhobbes_1_1AppendsToUnqualifier.html" title="hobbes::AppendsToUnqualifier" alt="" coords="236,2156,436,2183"/>
+<area shape="rect" id="node91" href="$classhobbes_1_1ConnectionP.html" title="hobbes::ConnectionP" alt="" coords="263,2207,409,2233"/>
+<area shape="rect" id="node92" href="$classhobbes_1_1CtorVerifier.html" title="hobbes::CtorVerifier" alt="" coords="267,2257,405,2284"/>
+<area shape="rect" id="node93" href="$classhobbes_1_1DataP.html" title="hobbes::DataP" alt="" coords="281,2308,391,2335"/>
+<area shape="rect" id="node94" href="$classhobbes_1_1DBFileRefLoader.html" title="hobbes::DBFileRefLoader" alt="" coords="250,2359,422,2385"/>
+<area shape="rect" id="node95" href="$classhobbes_1_1DeconstructP.html" title="hobbes::DeconstructP" alt="" coords="260,2409,412,2436"/>
+<area shape="rect" id="node96" href="$classhobbes_1_1EqualTypes.html" title="hobbes::EqualTypes" alt="" coords="265,2460,407,2487"/>
+<area shape="rect" id="node97" href="$classhobbes_1_1Existentials.html" title="hobbes::Existentials" alt="" coords="266,2511,406,2537"/>
+<area shape="rect" id="node98" href="$classhobbes_1_1FieldVerifier.html" title="hobbes::FieldVerifier" alt="" coords="265,2561,407,2588"/>
+<area shape="rect" id="node99" href="$classhobbes_1_1FixIsoRecur.html" title="hobbes::FixIsoRecur" alt="" coords="265,2612,407,2639"/>
+<area shape="rect" id="node100" href="$classhobbes_1_1InvokeP.html" title="hobbes::InvokeP" alt="" coords="276,2663,396,2689"/>
+<area shape="rect" id="node101" href="$classhobbes_1_1LoadFileP.html" title="hobbes::LoadFileP" alt="" coords="271,2713,401,2740"/>
+<area shape="rect" id="node102" href="$classhobbes_1_1LsP.html" title="hobbes::LsP" alt="" coords="289,2764,383,2791"/>
+<area shape="rect" id="node103" href="$classhobbes_1_1NotEqualTypes.html" title="hobbes::NotEqualTypes" alt="" coords="255,2815,417,2841"/>
+<area shape="rect" id="node104" href="$classhobbes_1_1ProcessP.html" title="hobbes::ProcessP" alt="" coords="271,2865,401,2892"/>
+<area shape="rect" id="node105" href="$classhobbes_1_1ReceiveP.html" title="hobbes::ReceiveP" alt="" coords="271,2916,401,2943"/>
+<area shape="rect" id="node106" href="$classhobbes_1_1RecordDeconstructor.html" title="hobbes::RecordDeconstructor" alt="" coords="238,2967,434,2993"/>
+<area shape="rect" id="node107" href="$classhobbes_1_1SizeOfP.html" title="hobbes::SizeOfP" alt="" coords="275,3017,397,3044"/>
+<area shape="rect" id="node108" href="$classhobbes_1_1SplitP.html" title="hobbes::SplitP" alt="" coords="283,3068,389,3095"/>
+<area shape="rect" id="node109" href="$classhobbes_1_1SubtypeUnqualifier.html" title="hobbes::SubtypeUnqualifier" alt="" coords="245,3119,427,3145"/>
+<area shape="rect" id="node110" href="$classhobbes_1_1TypeofP.html" title="hobbes::TypeofP" alt="" coords="275,3169,397,3196"/>
+<area shape="rect" id="node111" href="$classhobbes_1_1UnqualifierSet.html" title="hobbes::UnqualifierSet" alt="" coords="259,3220,413,3247"/>
+<area shape="rect" id="node112" href="$classhobbes_1_1VariantDeconstructor.html" title="hobbes::VariantDeconstructor" alt="" coords="239,3271,433,3297"/>
+</map>

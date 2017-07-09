@@ -1,0 +1,4 @@
+<map id="hobbes::TClass" name="hobbes::TClass">
+<area shape="rect" id="node2" href="$structhobbes_1_1Unqualifier.html" title="{hobbes::Unqualifier\n||+ refine()\l+ satisfied()\l+ satisfiable()\l+ explain()\l+ unqualify()\l+ lookup()\l+ bindings()\l+ dependencies()\l}" alt="" coords="5,20,140,200"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n|&#45; lannotation\l|+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="164,5,347,215"/>
+</map>

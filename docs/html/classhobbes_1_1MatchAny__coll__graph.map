@@ -1,0 +1,7 @@
+<map id="hobbes::MatchAny" name="hobbes::MatchAny">
+<area shape="rect" id="node2" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; MatchAny \&gt;\n||+ PatternCase()\l}" alt="" coords="240,1015,385,1107"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1Pattern.html" title="{hobbes::Pattern\n||+ show()\l+ operator==()\l+ name()\l+ name()\l+ case_id()\l# assignSubNames()\l# Pattern()\l}" alt="" coords="238,645,382,811"/>
+<area shape="rect" id="node10" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; Case \&gt;\n||+ PatternCase()\l}" alt="" coords="240,860,385,952"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n||+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="84,373,267,583"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1LexicalAnnotation.html" title="{hobbes::LexicalAnnotation\n||+ LexicalAnnotation()\l+ filename()\l+ lineDesc()\l+ lines()\l+ null()\l+ merge()\l}" alt="" coords="88,160,263,311"/>
+</map>

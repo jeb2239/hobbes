@@ -1,0 +1,7 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$structhobbes_1_1storage_1_1fixedArrIterWrite.html" title="hobbes::storage::fixedArr\lIterWrite\&lt; T, N \&gt;" alt="" coords="5,5,173,47"/>
+<area shape="rect" id="node2" href="$structhobbes_1_1storage_1_1store_3_01T[N]_00_01typename_01cannot__memcpy_3_01T_01_4_1_1type_01_4.html" title="hobbes::storage::store\l\&lt; T[N], typename cannot\l_memcpy\&lt; T \&gt;::type \&gt;" alt="" coords="221,11,389,67"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1storage_1_1fixedArrMemcpyWrite.html" title="hobbes::storage::fixedArr\lMemcpyWrite\&lt; T, N \&gt;" alt="" coords="5,136,173,177"/>
+<area shape="rect" id="node4" href="$structhobbes_1_1storage_1_1store_3_01T[N]_00_01typename_01store_3_01T_01_4_1_1can__memcpy_01_4.html" title="hobbes::storage::store\l\&lt; T[N], typename store\l\&lt; T \&gt;::can_memcpy \&gt;" alt="" coords="226,103,385,159"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1storage_1_1fixedArrTyDesc.html" title="hobbes::storage::fixedArr\lTyDesc\&lt; T, N \&gt;" alt="" coords="5,71,173,112"/>
+</map>

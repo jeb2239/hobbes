@@ -1,0 +1,7 @@
+<map id="hobbes::switchExprM&lt; T &gt;" name="hobbes::switchExprM&lt; T &gt;">
+<area shape="rect" id="node2" href="$structhobbes_1_1switchExprM.html" title="{hobbes::switchExprM\l\&lt; UnitV \&gt;\n||+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 15 more...\l}" alt="" coords="59,292,207,531"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1expTypeInfF.html" title="{hobbes::expTypeInfF\n|+ tenv\l+ u\l+ ds\l|+ expTypeInfF()\l+ qt()\l+ qt()\l+ mkprim()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 20 more...\l+ letRecFrame()\l}" alt="" coords="5,580,151,848"/>
+<area shape="rect" id="node4" href="$structhobbes_1_1switchExprTyFnM.html" title="{hobbes::switchExprTyFnM\n||+ withTy()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\land 16 more...\l&#45; updateTy()\l}" alt="" coords="175,595,354,833"/>
+<area shape="rect" id="node5" href="$structhobbes_1_1applySubstitutionF.html" title="{hobbes::applySubstitutionF\n|+ s\l|+ applySubstitutionF()\l+ withTy()\l}" alt="" coords="77,897,257,989"/>
+<area shape="rect" id="node6" href="$structhobbes_1_1exprTypeSubst.html" title="{hobbes::exprTypeSubst\n|+ u\l|+ exprTypeSubst()\l+ withTy()\l}" alt="" coords="282,897,442,989"/>
+</map>

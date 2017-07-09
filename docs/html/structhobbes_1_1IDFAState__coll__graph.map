@@ -1,0 +1,7 @@
+<map id="hobbes::IDFAState" name="hobbes::IDFAState">
+<area shape="rect" id="node2" href="$structhobbes_1_1array.html" title="{hobbes::array\&lt; T \&gt;\n||}" alt="" coords="90,771,223,848"/>
+<area shape="rect" id="node5" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; int,\l long \&gt;\n||+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="291,712,433,907"/>
+<area shape="rect" id="node12" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; Ctors \&gt;\n||+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="384,469,551,649"/>
+<area shape="rect" id="node9" href="$structhobbes_1_1maximum.html" title="{hobbes::maximum\&lt; hobbes\l::TAlignOfF, Ctors... \&gt;\n||}" alt="" coords="607,315,789,407"/>
+<area shape="rect" id="node11" href="$structhobbes_1_1maximum.html" title="{hobbes::maximum\&lt; SzP,\l T0, Ts \&gt;\n||}" alt="" coords="689,145,859,237"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="hobbes::terminal" name="hobbes::terminal">
+<area shape="rect" id="node2" href="$classhobbes_1_1character.html" title="{hobbes::character\n|&#45; x\l|+ character()\l+ value()\l+ value()\l+ show()\l+ matchPattern()\l+ matchRefExpr()\l}" alt="" coords="5,160,132,311"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1endOfFile.html" title="{hobbes::endOfFile\n||+ endOfFile()\l+ show()\l+ matchPattern()\l+ matchRefExpr()\l+ value()\l}" alt="" coords="157,167,285,303"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1symbol.html" title="{hobbes::symbol\n|&#45; sname\l|+ symbol()\l+ name()\l+ show()\l+ matchPattern()\l+ matchRefExpr()\l}" alt="" coords="309,167,436,303"/>
+</map>

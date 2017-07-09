@@ -1,0 +1,6 @@
+<map id="hobbes::dbseq&lt; T &gt;" name="hobbes::dbseq&lt; T &gt;">
+<area shape="rect" id="node2" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; unit,\l cons_t \&gt;\n||+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="205,712,353,907"/>
+<area shape="rect" id="node9" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; Ctors \&gt;\n||+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="196,469,363,649"/>
+<area shape="rect" id="node6" href="$structhobbes_1_1maximum.html" title="{hobbes::maximum\&lt; hobbes\l::TAlignOfF, Ctors... \&gt;\n||}" alt="" coords="277,315,460,407"/>
+<area shape="rect" id="node8" href="$structhobbes_1_1maximum.html" title="{hobbes::maximum\&lt; SzP,\l T0, Ts \&gt;\n||}" alt="" coords="359,145,530,237"/>
+</map>

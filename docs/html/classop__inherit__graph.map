@@ -1,0 +1,49 @@
+<map id="op" name="op">
+<area shape="rect" id="node2" href="$classhobbes_1_1aconcatexp.html" title="{hobbes::aconcatexp\n||+ apply()\l+ type()\l}" alt="" coords="5,160,144,252"/>
+<area shape="rect" id="node3" href="$structhobbes_1_1addFileSignalF.html" title="{hobbes::addFileSignalF\n||+ apply()\l+ type()\l}" alt="" coords="169,160,327,252"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1adjptr.html" title="{hobbes::adjptr\n||+ apply()\l+ type()\l}" alt="" coords="352,160,456,252"/>
+<area shape="rect" id="node5" href="$classhobbes_1_1adjvtblptr.html" title="{hobbes::adjvtblptr\n||+ apply()\l+ type()\l}" alt="" coords="480,160,605,252"/>
+<area shape="rect" id="node6" href="$classhobbes_1_1alenexp.html" title="{hobbes::alenexp\n||+ apply()\l+ type()\l}" alt="" coords="629,160,747,252"/>
+<area shape="rect" id="node7" href="$classhobbes_1_1applyCFn.html" title="{hobbes::applyCFn\n||+ apply()\l+ type()\l}" alt="" coords="771,160,899,252"/>
+<area shape="rect" id="node8" href="$classhobbes_1_1asetlen.html" title="{hobbes::asetlen\n||&#45; apply()\l&#45; type()\l}" alt="" coords="923,160,1037,252"/>
+<area shape="rect" id="node9" href="$classhobbes_1_1castexp.html" title="{hobbes::castexp\n||+ apply()\l+ type()\l}" alt="" coords="1062,160,1181,252"/>
+<area shape="rect" id="node10" href="$classhobbes_1_1cptrrefbyF.html" title="{hobbes::cptrrefbyF\n||&#45; apply()\l&#45; type()\l}" alt="" coords="1204,160,1335,252"/>
+<area shape="rect" id="node11" href="$structhobbes_1_1dballocArrF.html" title="{hobbes::dballocArrF\n||+ apply()\l+ type()\l}" alt="" coords="1359,160,1497,252"/>
+<area shape="rect" id="node12" href="$structhobbes_1_1dballocArrPF.html" title="{hobbes::dballocArrPF\n||+ apply()\l+ type()\l}" alt="" coords="1521,160,1668,252"/>
+<area shape="rect" id="node13" href="$structhobbes_1_1dballocF.html" title="{hobbes::dballocF\n||+ apply()\l+ type()\l}" alt="" coords="1693,160,1814,252"/>
+<area shape="rect" id="node14" href="$structhobbes_1_1dbarrCapacityF.html" title="{hobbes::dbarrCapacityF\n||+ apply()\l+ type()\l}" alt="" coords="1838,160,1999,252"/>
+<area shape="rect" id="node15" href="$structhobbes_1_1dbarrCapacityPF.html" title="{hobbes::dbarrCapacityPF\n||+ apply()\l+ type()\l}" alt="" coords="2024,160,2195,252"/>
+<area shape="rect" id="node16" href="$structhobbes_1_1dbArrIdxRefF.html" title="{hobbes::dbArrIdxRefF\n||+ apply()\l+ type()\l}" alt="" coords="2219,160,2370,252"/>
+<area shape="rect" id="node17" href="$structhobbes_1_1dbloadF.html" title="{hobbes::dbloadF\n||+ apply()\l+ type()\l}" alt="" coords="2394,160,2513,252"/>
+<area shape="rect" id="node18" href="$structhobbes_1_1dbloadPF.html" title="{hobbes::dbloadPF\n||+ apply()\l+ type()\l}" alt="" coords="2537,160,2663,252"/>
+<area shape="rect" id="node19" href="$classhobbes_1_1dbloadVF.html" title="{hobbes::dbloadVF\n||&#45; apply()\l&#45; type()\l}" alt="" coords="2687,160,2814,252"/>
+<area shape="rect" id="node20" href="$structhobbes_1_1dbRefFileF.html" title="{hobbes::dbRefFileF\n||+ apply()\l+ type()\l}" alt="" coords="2839,160,2975,252"/>
+<area shape="rect" id="node21" href="$structhobbes_1_1dbstoreF.html" title="{hobbes::dbstoreF\n||+ apply()\l+ type()\l}" alt="" coords="2999,160,3121,252"/>
+<area shape="rect" id="node22" href="$structhobbes_1_1dbstorePF.html" title="{hobbes::dbstorePF\n||+ apply()\l+ type()\l}" alt="" coords="3146,160,3278,252"/>
+<area shape="rect" id="node23" href="$classhobbes_1_1dbstoreVF.html" title="{hobbes::dbstoreVF\n||&#45; apply()\l&#45; type()\l}" alt="" coords="3302,160,3434,252"/>
+<area shape="rect" id="node24" href="$structhobbes_1_1dbunloadF.html" title="{hobbes::dbunloadF\n||+ apply()\l+ type()\l}" alt="" coords="3458,160,3590,252"/>
+<area shape="rect" id="node25" href="$classhobbes_1_1idexp.html" title="{hobbes::idexp\n||+ apply()\l+ type()\l}" alt="" coords="3614,160,3717,252"/>
+<area shape="rect" id="node26" href="$classhobbes_1_1ifexp.html" title="{hobbes::ifexp\n||+ apply()\l+ type()\l}" alt="" coords="3741,160,3841,252"/>
+<area shape="rect" id="node27" href="$classhobbes_1_1newArrayfn.html" title="{hobbes::newArrayfn\n||+ apply()\l+ type()\l}" alt="" coords="3865,160,4004,252"/>
+<area shape="rect" id="node28" href="$classhobbes_1_1newPrimfn.html" title="{hobbes::newPrimfn\n|&#45; zeroMem\l|+ newPrimfn()\l+ apply()\l+ type()\l}" alt="" coords="4029,153,4163,259"/>
+<area shape="rect" id="node29" href="$structhobbes_1_1openFileF.html" title="{hobbes::openFileF\n|+ writeable\l+ loadf\l+ internTypes\l|+ openFileF()\l+ encodeTypePtr()\l+ apply()\l+ type()\l}" alt="" coords="4188,131,4319,281"/>
+<area shape="rect" id="node30" href="$classhobbes_1_1packIntF.html" title="{hobbes::packIntF\n||&#45; apply()\l&#45; type()\l}" alt="" coords="4343,160,4465,252"/>
+<area shape="rect" id="node31" href="$classhobbes_1_1packLongF.html" title="{hobbes::packLongF\n||&#45; apply()\l&#45; type()\l}" alt="" coords="4489,160,4625,252"/>
+<area shape="rect" id="node32" href="$classhobbes_1_1packShortF.html" title="{hobbes::packShortF\n||&#45; apply()\l&#45; type()\l}" alt="" coords="4649,160,4788,252"/>
+<area shape="rect" id="node33" href="$classhobbes_1_1primdfafunc.html" title="{hobbes::primdfafunc\n|&#45; vfn\l&#45; ftype\l|+ primdfafunc()\l+ apply()\l+ type()\l}" alt="" coords="4813,145,4953,267"/>
+<area shape="rect" id="node34" href="$structhobbes_1_1printConnectionF.html" title="{hobbes::printConnectionF\n|+ showf\l|+ printConnectionF()\l+ apply()\l+ type()\l}" alt="" coords="4977,153,5148,259"/>
+<area shape="rect" id="node35" href="$structhobbes_1_1printFileF.html" title="{hobbes::printFileF\n|+ showf\l|+ printFileF()\l+ apply()\l+ type()\l}" alt="" coords="5173,153,5299,259"/>
+<area shape="rect" id="node36" href="$classhobbes_1_1recHLabel.html" title="{hobbes::recHLabel\n||+ apply()\l+ type()\l}" alt="" coords="5324,160,5455,252"/>
+<area shape="rect" id="node37" href="$classhobbes_1_1recHValue.html" title="{hobbes::recHValue\n||+ apply()\l+ type()\l}" alt="" coords="5479,160,5612,252"/>
+<area shape="rect" id="node38" href="$classhobbes_1_1recTail.html" title="{hobbes::recTail\n||+ apply()\l+ type()\l}" alt="" coords="5637,160,5747,252"/>
+<area shape="rect" id="node39" href="$structhobbes_1_1remoteHostF.html" title="{hobbes::remoteHostF\n||+ remoteHostF()\l+ apply()\l+ type()\l}" alt="" coords="5771,153,5919,259"/>
+<area shape="rect" id="node40" href="$classhobbes_1_1saacopy.html" title="{hobbes::saacopy\n||&#45; apply()\l&#45; type()\l}" alt="" coords="5943,160,6065,252"/>
+<area shape="rect" id="node41" href="$classhobbes_1_1saelem.html" title="{hobbes::saelem\n||&#45; apply()\l&#45; type()\l}" alt="" coords="6089,160,6204,252"/>
+<area shape="rect" id="node42" href="$classhobbes_1_1salenexp.html" title="{hobbes::salenexp\n||&#45; apply()\l&#45; type()\l}" alt="" coords="6229,160,6353,252"/>
+<area shape="rect" id="node43" href="$classhobbes_1_1signalsF.html" title="{hobbes::signalsF\n||&#45; apply()\l&#45; type()\l}" alt="" coords="6377,160,6498,252"/>
+<area shape="rect" id="node44" href="$structhobbes_1_1signalUpdateF.html" title="{hobbes::signalUpdateF\n||+ apply()\l+ type()\l}" alt="" coords="6522,160,6678,252"/>
+<area shape="rect" id="node45" href="$classhobbes_1_1threadF.html" title="{hobbes::threadF\n||&#45; apply()\l&#45; type()\l}" alt="" coords="6702,160,6818,252"/>
+<area shape="rect" id="node46" href="$classhobbes_1_1varHLabel.html" title="{hobbes::varHLabel\n||+ apply()\l+ type()\l}" alt="" coords="6843,160,6973,252"/>
+<area shape="rect" id="node47" href="$classhobbes_1_1varInjH.html" title="{hobbes::varInjH\n||&#45; apply()\l&#45; type()\l}" alt="" coords="6997,160,7112,252"/>
+<area shape="rect" id="node48" href="$classhobbes_1_1varSplit.html" title="{hobbes::varSplit\n||+ callWith()\l+ fnReturnType()\l+ apply()\l+ type()\l+ payloadValue()\l}" alt="" coords="7137,138,7258,274"/>
+</map>

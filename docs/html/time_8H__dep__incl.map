@@ -1,0 +1,15 @@
+<map id="include/hobbes/util/time.H" name="include/hobbes/util/time.H">
+<area shape="rect" id="node2" href="$evaluator_8C.html" title="bin/hi/evaluator.C" alt="" coords="112,95,236,121"/>
+<area shape="rect" id="node3" href="$bin_2hi_2funcdefs_8C.html" title="bin/hi/funcdefs.C" alt="" coords="260,95,381,121"/>
+<area shape="rect" id="node4" href="$netio_8H.html" title="bin/hog/netio.H" alt="" coords="200,169,311,196"/>
+<area shape="rect" id="node8" href="$hog_2main_8C.html" title="bin/hog/main.C" alt="" coords="620,244,731,271"/>
+<area shape="rect" id="node9" href="$series_8H.html" title="include/hobbes/db/series.H" alt="" coords="457,95,637,121"/>
+<area shape="rect" id="node13" href="$lib_2hobbes_2eval_2funcdefs_8C.html" title="lib/hobbes/eval/funcdefs.C" alt="" coords="713,95,891,121"/>
+<area shape="rect" id="node14" href="$expr_8C.html" title="lib/hobbes/lang/expr.C" alt="" coords="915,95,1067,121"/>
+<area shape="rect" id="node5" href="$batchrecv_8C.html" title="bin/hog/batchrecv.C" alt="" coords="306,244,445,271"/>
+<area shape="rect" id="node6" href="$batchsend_8C.html" title="bin/hog/batchsend.C" alt="" coords="5,244,148,271"/>
+<area shape="rect" id="node7" href="$local_8C.html" title="bin/hog/local.C" alt="" coords="173,244,282,271"/>
+<area shape="rect" id="node10" href="$session_8H.html" title="bin/hog/session.H" alt="" coords="335,169,461,196"/>
+<area shape="rect" id="node12" href="$series_8C.html" title="lib/hobbes/db/series.C" alt="" coords="486,169,638,196"/>
+<area shape="rect" id="node11" href="$session_8C.html" title="bin/hog/session.C" alt="" coords="469,244,596,271"/>
+</map>

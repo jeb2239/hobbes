@@ -1,0 +1,9 @@
+<map id="include/hobbes/util/codec.H" name="include/hobbes/util/codec.H">
+<area shape="rect" id="node2" href="$cc_8C.html" title="lib/hobbes/eval/cc.C" alt="" coords="5,102,147,129"/>
+<area shape="rect" id="node3" href="$lib_2hobbes_2eval_2funcdefs_8C.html" title="lib/hobbes/eval/funcdefs.C" alt="" coords="171,102,349,129"/>
+<area shape="rect" id="node4" href="$net_8C.html" title="lib/hobbes/ipc/net.C" alt="" coords="373,102,512,129"/>
+<area shape="rect" id="node5" href="$prepl_8C.html" title="lib/hobbes/ipc/prepl.C" alt="" coords="537,102,685,129"/>
+<area shape="rect" id="node6" href="$expr_8C.html" title="lib/hobbes/lang/expr.C" alt="" coords="709,102,861,129"/>
+<area shape="rect" id="node7" href="$class_8C.html" title="lib/hobbes/lang/preds\l/class.C" alt="" coords="886,95,1031,136"/>
+<area shape="rect" id="node8" href="$type_8C.html" title="lib/hobbes/lang/type.C" alt="" coords="1056,102,1208,129"/>
+</map>

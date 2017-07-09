@@ -1,0 +1,5 @@
+<map id="hobbes::LoadVars" name="hobbes::LoadVars">
+<area shape="rect" id="node2" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; LoadVars \&gt;\n||+ MStateCase()\l}" alt="" coords="5,360,151,452"/>
+<area shape="rect" id="node3" href="$classhobbes_1_1MState.html" title="{hobbes::MState\n|+ refs\l+ isPrimMatchRoot\l+ primFArgs\l&#45; cid\l|+ stamp()\l+ case_id()\l# MState()\l}" alt="" coords="25,5,160,156"/>
+<area shape="rect" id="node4" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; Case \&gt;\n||+ MStateCase()\l}" alt="" coords="95,205,240,297"/>
+</map>
