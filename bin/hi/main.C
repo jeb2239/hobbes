@@ -34,7 +34,6 @@ void setDefaultColorScheme() {
   colors.unsweetfg   = 123;
   colors.typefg      = 123;
   colors.llvmfg      = 249;
-
   colors.instfg         = 4;
   colors.argdelimfg     = 11;
   colors.registerfg     = 198;

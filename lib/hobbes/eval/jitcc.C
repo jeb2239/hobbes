@@ -14,6 +14,7 @@
 #endif
 
 #include "llvm/ExecutionEngine/JITEventListener.h"
+#include "llvm/Linker/Linker.h"
 
 namespace hobbes {
 
@@ -149,6 +150,19 @@ void jitcc::dump() const {
     m->dump();
   }
 }
+    void jitcc::dump(int n) const {
+        this->modules[n]->dump();
+    }
+
+    void jitcc::merge() const {
+        int n = this->modules.size();
+        llvm::Module* firstMod =  this->modules[0];
+        //now fold into first module
+        for(int i=1;i<n;i++){
+            llvm::Linker::LinkModules(firstMod,this->modules[i]);
+        }
+
+    }
 
 void* jitcc::getMachineCode(llvm::Function* f, llvm::JITEventListener* listener) {
 #if LLVM_VERSION_MINOR >= 6

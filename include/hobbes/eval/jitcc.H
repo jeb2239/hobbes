@@ -44,6 +44,10 @@ public:
   // print all module contents
   void dump() const;
 
+    //print the nth module contents
+    void dump(int n) const;
+    void merge() const;
+
   // define a global from a primitive expression
   void defineGlobal(const std::string& vname, const ExprPtr& unsweetExp);
 

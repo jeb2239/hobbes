@@ -510,6 +510,15 @@ void cc::dumpModule() {
   this->jit.dump();
 }
 
+    void cc::dumpModule(int n) {
+        this->jit.dump(n);
+    }
+
+    void cc::mergeModules(){
+        this->jit.merge();
+    }
+
+
 cc::bytes cc::machineCodeForExpr(const std::string& expr) {
   return this->jit.machineCodeForExpr(unsweetenExpression(readExpr(expr)));
 }

@@ -144,6 +144,8 @@ public:
 
   // dump the contents of the generated module (useful for debugging)
   void dumpModule();
+    void dumpModule(int n);
+    void mergeModules();
 
   // get the x86 machine code for an expression (useful for debugging)
   typedef std::vector<unsigned char> bytes;
