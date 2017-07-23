@@ -80,6 +80,11 @@ namespace hc {
         }
     }
 
+    void evaluator::lookupFunction(){
+        llvm::Module * current = this->ctx.module();
+
+    }
+
     evaluator::~evaluator() {
         delete this->wwwd;
     }
@@ -122,12 +127,14 @@ namespace hc {
     void evaluator::loadModule(const std::string& mfile) {
         hobbes::compile(&this->ctx, this->ctx.readModuleFile(mfile));
 
-        if (!this->silent && !loadSilently(mfile)) {
-            std::cout << setfgc(colors.hlfg) << "loaded module " << setfgc(colors.stdtextfg) << setbold() << "'" << mfile << "'" << std::endl;
-        }
+       // std::cerr<<"\nin loadModule compile"<<std::endl;
+//        if (!this->silent && !loadSilently(mfile)) {
+//            std::cerr << setfgc(colors.hlfg) << "loaded module " << setfgc(colors.stdtextfg) << setbold() << "'" << mfile << "'" << std::endl;
+//        }
     }
 
     void evaluator::evalExpr(const std::string& expr) {
+//        std::cerr << "Interperter"<<std::endl;
         std::pair<std::string, hobbes::ExprPtr> ed = this->ctx.readExprDefn(expr);
 
         if (!ed.first.empty()) {
@@ -138,6 +145,7 @@ namespace hc {
             std::cout << setfgc(colors.evalfg);
             this->ctx.compileFn<void()>(hobbes::fncall(hobbes::var("print", la), hobbes::list(ed.second), la))();
             std::cout << std::endl;
+
         }
     }
 

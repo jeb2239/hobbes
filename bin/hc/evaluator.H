@@ -48,6 +48,7 @@ namespace hc {
         void printTypeOf(const std::string& expr, bool);
 
         void printTypeEnv();
+        void lookupFunction();
         hobbes::str::seq completionsFor(const std::string& prefix) const;
         void printLLVMModule();
         void printLLVMModule(int n);

@@ -76,16 +76,22 @@ size_t setThreadRegion(size_t n) {
   currentRegion = n;
   return r;
 }
+//hobbes
+extern "C" size_t unsafeSetRegion(size_t n) { return setThreadRegion(n); }
 
 size_t makeMemRegion(const array<char>* n) {
   return addThreadRegion(makeStdString(n), new region(32768));
 }
 
-char* memalloc(long n) {
+extern "C" size_t unsafeMakeMemRegion(const array<char>* n){
+  return makeMemRegion(n);
+}
+
+extern "C" char* memalloc(long n) {
   return (char*)threadRegion().malloc(n);
 }
 
-char* memallocz(long n) {
+extern "C" char* memallocz(long n) {
   char* r = (char*)threadRegion().malloc(n);
   memset(r, 0, n);
   return r;
@@ -99,7 +105,7 @@ DEFINE_STRUCT(RegionState,
   (size_t,             wasted)
 );
 
-array<RegionState>* getMemoryPool() {
+extern "C" array<RegionState>* getMemoryPool() {
   const Regions& tr = threadRegions();
 
   array<RegionState>* rsa = makeArray<RegionState>(tr.size());
@@ -149,7 +155,7 @@ std::string showMemoryPool() {
   return str::showRightAlignedTable(tbl);
 }
 
-void printMemoryPool() {
+extern "C" void printMemoryPool() {
   std::cout << showMemoryPool() << std::flush;
 }
 
@@ -161,12 +167,18 @@ void clearMemoryPool() {
   threadRegion().clear();
 }
 
+extern "C" void unsafeClearMemoryPool(){clearMemoryPool();}
+
 void abortAtMemUsage(size_t maxsz) {
   threadRegion().abortAtMemCeiling(maxsz);
 }
 
 scoped_pool_reset::~scoped_pool_reset() {
   resetMemoryPool();
+}
+
+extern "C" void unsafeAbortAtMemUsage(size_t maxsz){
+  return abortAtMemUsage(maxsz);
 }
 
 const array<char>* makeString(region& m, const char* s, size_t len) {
@@ -209,11 +221,11 @@ template <typename T>
     }
   };
 
-const array<char>* showChar(char c) {
+extern "C" const array<char>* showChar(char c) {
   return makeString("'" + str::from(c) + "'");
 }
 
-const maybe<char>::ty* readChar(const array<char>* x) {
+extern "C" const maybe<char>::ty* readChar(const array<char>* x) {
   if (x->size == 3 && x->data[0] == '\'' && x->data[2] == '\'') {
     return maybe<char>::just(x->data[1]);
   } else {
@@ -221,15 +233,15 @@ const maybe<char>::ty* readChar(const array<char>* x) {
   }
 }
 
-const array<char>* showByteV(unsigned char b) {
+extern "C" const array<char>* showByteV(unsigned char b) {
   return makeString(str::hex(b));
 }
 
-const array<char>* showByte(unsigned char b) {
+extern "C" const array<char>* showByte(unsigned char b) {
   return makeString("0X" + str::hex(b));
 }
 
-const maybe<unsigned char>::ty* readByte(const array<char>* x) {
+extern "C" const maybe<unsigned char>::ty* readByte(const array<char>* x) {
   if (x->size == 4 && x->data[0] == '0' && x->data[1] == 'X' && str::isNyb(x->data[2]) && str::isNyb(x->data[3])) {
     return maybe<unsigned char>::just(str::denyb(x->data[2]) * 16 + str::denyb(x->data[3]));
   } else {
@@ -247,31 +259,31 @@ template <typename T>
     }
   }
 
-const array<char>* showShort(short s) {
+extern "C" const array<char>* showShort(short s) {
   return makeString(str::from(s) + "S");
 }
 
-const maybe<short>::ty* readShort(const array<char>* x) {
+extern "C" const maybe<short>::ty* readShort(const array<char>* x) {
   return readISV<short>(x);
 }
 
-const array<char>* showInt(int x) {
+extern "C" const array<char>* showInt(int x) {
   return makeString(str::from(x));
 }
 
-const maybe<int>::ty* readInt(const array<char>* x) {
+extern "C" const maybe<int>::ty* readInt(const array<char>* x) {
   return readISV<int>(x);
 }
 
-const array<char>* showLong(long x) {
+extern "C" const array<char>* showLong(long x) {
   return makeString(str::from(x));
 }
 
-const maybe<long>::ty* readLong(const array<char>* x) {
+extern "C" const maybe<long>::ty* readLong(const array<char>* x) {
   return readISV<long>(x);
 }
 
-const array<char>* showFloat(float x, int p) {
+extern "C" const array<char>* showFloat(float x, int p) {
   if (p <= 0) {
     return makeString(str::from(x)+"f");
   } else {
@@ -282,11 +294,11 @@ const array<char>* showFloat(float x, int p) {
   }
 }
 
-const maybe<float>::ty* readFloat(const array<char>* x) {
+extern "C" const maybe<float>::ty* readFloat(const array<char>* x) {
   return readISV<float>(x);
 }
 
-const array<char>* showDouble(double x, int p) {
+extern "C" const array<char>* showDouble(double x, int p) {
   std::ostringstream ss;
   if (p > 0) {
     ss << std::setiosflags(std::ios::fixed);
@@ -296,29 +308,29 @@ const array<char>* showDouble(double x, int p) {
   return makeString(ss.str());
 }
 
-const maybe<double>::ty* readDouble(const array<char>* x) {
+extern "C" const maybe<double>::ty* readDouble(const array<char>* x) {
   return readISV<double>(x);
 }
 
-const array<char>* showString(std::string* x) {
+extern "C" const array<char>* showString(std::string* x) {
   return makeString("\"" + *x + "\"");
 }
 
-const char timespanTNV[] = "timespan";
+extern "C" const char timespanTNV[] = "timespan";
 
-const array<char>* showTimespanV(timespanT x) {
+extern "C" const array<char>* showTimespanV(timespanT x) {
   return makeString(showTimespan(x.value));
 }
 
-const char timeTNV[] = "time";
+extern "C" const char timeTNV[] = "time";
 
-const array<char>* showTimeV(timeT x) {
+extern "C" const array<char>* showTimeV(timeT x) {
   return makeString(showTime(x.value));
 }
 
-const char datetimeTNV[] = "datetime";
+extern "C" const char datetimeTNV[] = "datetime";
 
-const array<char>* showDateTimeV(datetimeT x) {
+extern "C" const array<char>* showDateTimeV(datetimeT x) {
   return makeString(showDateTime(x.value));
 }
 
@@ -333,7 +345,7 @@ inline std::string showUS(int64_t us) {
    + str::from(us);
 }
 
-const array<char>* formatTimeV(const array<char>* fmt, long tus) {
+extern "C" const array<char>* formatTimeV(const array<char>* fmt, long tus) {
   int64_t s   = tus / (1000 * 1000);
   int64_t us  = tus % (1000 * 1000);
   std::string sfmt = str::replace<char>(makeStdString(fmt), "%us", showUS(us));
@@ -342,11 +354,11 @@ const array<char>* formatTimeV(const array<char>* fmt, long tus) {
   return makeString(buf);
 }
 
-const array<char>* formatDateTime(const array<char>* fmt, datetimeT x) {
+extern "C" const array<char>* formatDateTime(const array<char>* fmt, datetimeT x) {
   return formatTimeV(fmt, x.value);
 }
 
-datetimeT now() {
+extern "C" datetimeT now() {
   return datetimeT(time() / 1000);
 }
 
@@ -618,10 +630,10 @@ void initStdFuncDefs(cc& ctx) {
   ctx.bind("mallocz",               &memallocz);
   ctx.bind("printMemoryPool",       &printMemoryPool);
   ctx.bind("getMemoryPool",         &getMemoryPool);
-  ctx.bind("unsafeSetRegion",       &setThreadRegion);
-  ctx.bind("unsafeMakeMemRegion",   &makeMemRegion);
-  ctx.bind("unsafeClearMemoryPool", &clearMemoryPool);
-  ctx.bind("unsafeAbortAtMemUsage", &abortAtMemUsage);
+  ctx.bind("unsafeSetRegion",       &unsafeSetRegion);
+  ctx.bind("unsafeMakeMemRegion",   &unsafeMakeMemRegion);
+  ctx.bind("unsafeClearMemoryPool", &unsafeClearMemoryPool);
+  ctx.bind("unsafeAbortAtMemUsage", &unsafeAbortAtMemUsage);
 
   ctx.bind("showChar",     &showChar);
   ctx.bind("showByte",     &showByte);

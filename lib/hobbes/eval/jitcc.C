@@ -3,6 +3,7 @@
 #include <hobbes/eval/jitcc.H>
 #include <hobbes/eval/cexpr.H>
 
+
 #if LLVM_VERSION_MINOR == 3 or LLVM_VERSION_MINOR == 5
 #include "llvm/ExecutionEngine/JIT.h"
 #else
@@ -16,7 +17,9 @@
 #include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/Linker/Linker.h"
 
+
 namespace hobbes {
+
 
 // this should be moved out of here eventually
 bool isFileType(const MonoTypePtr&);
@@ -165,6 +168,8 @@ void jitcc::dump() const {
     }
 
 void* jitcc::getMachineCode(llvm::Function* f, llvm::JITEventListener* listener) {
+
+
 #if LLVM_VERSION_MINOR >= 6
   // try to get the machine code for this function out of an existing compiled module
   for (auto ee : this->eengines) {
@@ -172,6 +177,8 @@ void* jitcc::getMachineCode(llvm::Function* f, llvm::JITEventListener* listener)
       return pf;
     }
   }
+
+//  LOG_S(INFO) << "we've never seen this function it must be in the current module";
 
   // we've never seen this function, it must be in the current module
   if (!this->currentModule) {
@@ -181,7 +188,7 @@ void* jitcc::getMachineCode(llvm::Function* f, llvm::JITEventListener* listener)
   // make a new execution engine out of this module (finalizing the module)
   std::string err;
   llvm::ExecutionEngine* ee = makeExecutionEngine(this->currentModule, (llvm::SectionMemoryManager*)(new jitmm(this)));
-
+   // LOG_S(INFO) << "making a new execution engine";
   if (listener) {
     ee->RegisterJITEventListener(listener);
   }
@@ -266,6 +273,7 @@ public:
   void NotifyObjectEmitted(const llvm::object::ObjectFile& o, const llvm::RuntimeDyld::LoadedObjectInfo& dl) {
     for (auto s : o.symbols()) {
       const llvm::object::ELFSymbolRef* esr = (llvm::object::ELFSymbolRef*)(&s);
+    //    LOG_S(INFO) << this->fname;
 
       if (esr && esr->getName()) {
         std::string n(esr->getName().get().data(), esr->getName().get().size());
@@ -325,6 +333,7 @@ jitcc::bytes jitcc::machineCodeForExpr(const ExprPtr& e) {
   bytes           r  = bytes((uint8_t*)f, ((uint8_t*)f) + lenwatch.size());
 
   releaseMachineCode(f);
+  //  LOG_S(INFO) << "release Machine code";
   return r;
 }
 
@@ -346,10 +355,15 @@ bool jitcc::isDefined(const std::string& vn) const {
 }
 
 llvm::Value* jitcc::compile(const ExprPtr& exp) {
+
+  //  LOG_S(INFO) << "Compiling unnamed expression " << show(exp);
+
   return toLLVM(this, exp);
 }
 
 llvm::Value* jitcc::compile(const std::string& vname, const ExprPtr& exp) {
+    //LOG_S(INFO) << "Compiling named expression" << vname ;
+
   return toLLVM(this, vname, exp);
 }
 
@@ -475,21 +489,36 @@ llvm::Value* jitcc::loadConstant(const std::string& vn) {
   }
 }
 
-void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
-  std::string vname = vn.empty() ? (".global" + freshName()) : vn;
-  this->globalExprs[vn] = ue;
+void jitcc::resolveProgramMain(){
 
+    }
+// TODO: generate a main in define global
+void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
+      bool is_main = false;
+      if(vn.find("main")!=std::string::npos){
+        std::cerr << "Found main function!!!"<<std::endl;
+        is_main=true;
+        std::cerr<< vn <<std::endl;
+      }
+
+      std::cout << "Inside define Global vn= "<<vn<<std::endl;
+      std::cout << show(ue)<<std::endl;
+  std::string vname = vn.empty() ? (".global" + freshName()) : vn;
+      std::cout<< vname << std::endl;
+  this->globalExprs[vn] = ue;
   typedef void (*Thunk)();
   MonoTypePtr uety = requireMonotype(ue);
 
   if (isUnit(uety)) {
     // no storage necessary for units
+    std::cout<<"Is Unit"<<std::endl;
     Thunk f = (Thunk)reifyMachineCodeForFn(uety, list<std::string>(), list<MonoTypePtr>(), ue);
-    f();
+    f(); // <- this call right here is what executes the Thunk for a unit returning function invokation
     releaseMachineCode((void*)f);
     resetMemoryPool();
   } else if (llvm::Constant* c = toLLVMConstant(this, vname, ue)) {
     // make a global constant ...
+    std::cout<<"is constant"<<std::endl;
     Constant& cv = this->constants[vname];
     cv.value = c;
     cv.type  = toLLVM(uety);
@@ -497,11 +526,15 @@ void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
 
     if (is<Func>(uety)) {
       // functions are loaded by name rather than by constant value
+      std::cout<<"this is a function"<<std::endl;
       cv.ref = 0;
     } else {
       cv.ref = new llvm::GlobalVariable(*module(), cv.type, true, llvm::GlobalVariable::InternalLinkage, c, vname);
+
     }
-  } else {
+  } else
+
+  {
     // make some space for this global data ...
     if (isLargeType(uety)) {
       void** pdata = (void**)this->globalData.malloc(sizeof(void*));
@@ -514,18 +547,22 @@ void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
     // compile an initializer function for this expression
     llvm::BasicBlock* ibb = this->builder()->GetInsertBlock();
     llvm::Function* initfn = allocFunction("." + vname + "_init", MonoTypes(), primty("unit"));
+    std::cerr<<"Initfn dump"<<std::endl;
+    initfn->dump();
     if (initfn == 0) {
       throw annotated_error(*ue, "Failed to allocate initializer function for '" + vname + "'.");
     }
     llvm::BasicBlock* bb = llvm::BasicBlock::Create(context(), "entry", initfn);
     this->builder()->SetInsertPoint(bb);
-
+    //convert expression to llvm-ir
     compile(assign(var(vname, uety, ue->la()), ue, ue->la()));
     this->builder()->CreateRetVoid();
 
+
     // compile and run this function, it should then perform the global variable assignment
     // (make sure that any allocation happens in the global context iff we need it)
-    Thunk f = (Thunk)getMachineCode(initfn);
+
+  Thunk f = (Thunk)getMachineCode(initfn);
 
     if (hasPointerRep(uety)) {
       size_t oldregion = pushGlobalRegion();
@@ -535,6 +572,7 @@ void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
       f();
       resetMemoryPool();
     }
+
 
     // clean up
     releaseMachineCode((void*)f);

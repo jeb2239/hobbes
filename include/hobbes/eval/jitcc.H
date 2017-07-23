@@ -51,6 +51,9 @@ public:
   // define a global from a primitive expression
   void defineGlobal(const std::string& vname, const ExprPtr& unsweetExp);
 
+    //get program main
+    //
+ void resolveProgramMain();
   // define a global on some existing memory
   void bindGlobal(const std::string& vn, const MonoTypePtr& ty, void* v);
 

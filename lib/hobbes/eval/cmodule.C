@@ -309,6 +309,7 @@ void compile(cc* e, const ModulePtr& m) {
     } else if (const MTypeDef* td = is<MTypeDef>(*md)) {
       compile(e, td);
     } else if (const MVarDef* vd = is<MVarDef>(*md)) {
+//      std::cerr << show(*md);
       compile(e, vd);
     } else if (const MVarTypeDef* vtd = is<MVarTypeDef>(*md)) {
       compile(e, vtd);

@@ -285,7 +285,7 @@ void cc::define(const std::string& vname, const std::string& expr) {
 
 void cc::bind(const PolyTypePtr& ty, const std::string& vn, void* x) {
   this->tenv->bind(vn, ty);
-  this->jit.bindGlobal(vn, requireMonotype(ty), x);
+  this->jit.bindGlobal(vn, requireMonotype(ty), x); // monotype
 }
 
 // define a transparent type alias

@@ -3,7 +3,7 @@
 #include <hobbes/ipc/net.H>
 #include <hobbes/util/array.H>
 #include <hobbes/util/str.H>
-
+#include <cstdio>
 #include <iostream>
 #include <fstream>
 #include <time.h>
@@ -610,12 +610,15 @@ int main(int argc, char** argv) {
                 eval.loadModule(str::expandPath(*m));
             }
         }
-//        int a;
-//        printf("Enter the number module you want to print\n");
-//        scanf("%d",&a);
-//        printf("Printing module # %d",a);
+//        std::flush(std::cout);
+//        std::cerr << "end yo" << std::endl;
+        //this merges all the modules into the first module and resolves name clashes in a context
+        // aware manner
+      FILE* fp = fopen("out.ll","w");
         eval.mergeModules();
-        eval.printLLVMModule(0);
+      dup2(fileno(fp),STDERR_FILENO);
+      eval.printLLVMModule(0);
+
 
 
         // should we evaluate some given expression?

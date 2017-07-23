@@ -11,7 +11,6 @@
 #include <hobbes/lang/typepreds.H>
 #include <hobbes/read/parser.H>
 #include <hobbes/eval/jitcc.H>
-
 #include <hobbes/util/func.H>
 #include <hobbes/util/llvm.H>
 #include <hobbes/util/str.H>

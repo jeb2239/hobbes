@@ -14,17 +14,17 @@
 namespace hobbes {
 
 // type aliases for common types
-extern const char timespanTNV[];
+extern "C" const char timespanTNV[];
 typedef typeAlias<timespanTNV, int64_t> timespanT;
 
-extern const char timeTNV[];
+extern "C" const char timeTNV[];
 typedef typeAlias<timeTNV, int64_t> timeT;
 
-extern const char datetimeTNV[];
+extern "C" const char datetimeTNV[];
 typedef typeAlias<datetimeTNV, int64_t> datetimeT;
 
 // allocate some memory in the calling thread's memory pool
-char* memalloc(long n);
+extern "C" char* memalloc(long n);
 
 // string representations, I/O
 const array<char>* makeString(const std::string& x);
