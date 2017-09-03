@@ -634,9 +634,13 @@ void runEvery(timespanT dt, bool (*pf)()) {
 void initStdFuncDefs(cc& ctx) {
 #define HC 0
 #ifdef HC
-  ctx.bind("memalloc",&memalloc);
+  ctx.bind("memalloc",memalloc);
   ctx.bind("putTest",putTest);
   ctx.bind("putStr",putStr);
+  ctx.bind("printMemoryPool",printMemoryPool);
+  ctx.bind("cstrlen", &cstrlen); // in the case of static compile this is just to make the checker happy.
+  ctx.bind("cstrelem", &cstrelem);
+  ctx.bind("showInt", &showInt);// convert int to string 
 
 #endif
 

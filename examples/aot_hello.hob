@@ -1,0 +1,11 @@
+
+#include "arith.hob"
+
+putInt a = putStr(showInt(a))
+
+//monomorphically typed entry point
+main :: int -> ()
+main a = let g= 3*3 in putInt(g)
+
+
+
