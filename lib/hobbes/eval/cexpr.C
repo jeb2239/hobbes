@@ -362,7 +362,7 @@ public:
     }
 
     // fill in the default (failure) target for variant matching
-    llvm::Function* f = this->c->lookupFunction(".failvarmatch");
+    llvm::Function* f = this->c->lookupFunction("failvarmatch");
     if (!f) { throw std::runtime_error("Internal compiler error -- no default variant match failure handler defined."); }
 
     auto ltxts = v->la().lines(v->la().p0.first-1, v->la().p1.first);

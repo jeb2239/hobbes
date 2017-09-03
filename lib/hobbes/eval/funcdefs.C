@@ -406,8 +406,14 @@ const array<char>* releaseStdout() {
   return result;
 }
 
-void putStr(array<char>* x) {
+extern "C" void putStr(array<char>* x) {
   std::cout.write(x->data, x->size);
+}
+
+
+extern "C" void putTest(){
+  std::cout.write("hello",5);
+
 }
 
 size_t cstrlen(char* x) {
@@ -626,6 +632,15 @@ void runEvery(timespanT dt, bool (*pf)()) {
 }
 
 void initStdFuncDefs(cc& ctx) {
+#define HC 0
+#ifdef HC
+  ctx.bind("memalloc",&memalloc);
+  ctx.bind("putTest",putTest);
+  ctx.bind("putStr",putStr);
+
+#endif
+
+#ifndef HC
   ctx.bind("malloc",                &memalloc);
   ctx.bind("mallocz",               &memallocz);
   ctx.bind("printMemoryPool",       &printMemoryPool);
@@ -679,17 +694,17 @@ void initStdFuncDefs(cc& ctx) {
   ctx.bind("truncd", &truncd);
 
   // this should never be called, it's only here to do something in the event of variant tag match failure
-  ctx.bind(".failvarmatch", &failvarmatch);
+  ctx.bind("failvarmatch", &failvarmatch);
 
   // string comparisons
   ctx.bind("cstrlen", &cstrlen);
   ctx.bind("cstrelem", &cstrelem);
 
   // dump some bytes
-  ctx.bind(".dumpBytes", &dumpBytes);
+  ctx.bind("dumpBytes", &dumpBytes);
 
   // spawn a thread and wait for it (a very rough initial design)
-  ctx.bind(".thread", &newThread);
+  //ctx.bind("thread", &newThread);
   ctx.bind("wait",    &threadWait);
   ctx.bind("sleep",   &threadSleep);
 
@@ -719,6 +734,8 @@ void initStdFuncDefs(cc& ctx) {
   ctx.bind("decompress", &uncompressBytes);
 
   ctx.bind("runEvery", &runEvery);
+
+#endif
 }
 
 }

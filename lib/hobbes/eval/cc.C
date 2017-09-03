@@ -111,9 +111,10 @@ cc::cc() :
   initStorageFileDefs(fv, *this);
 
   // boot
-  compileBootCode(*this);
 
-  this->booted = true;
+//  compileBootCode(*this);
+
+  this->booted = false;
 }
 
 cc::~cc() {
@@ -177,7 +178,7 @@ bool cc::hasValueBinding(const std::string& vname) {
 //   * explicit closure construction (for lexically-scoped variables in functions)
 //   * explicit type annotation on terms (ie: type inference)
 //   * remove satisfied qualified types by rewriting
-//   * expand trivial macro definitions
+//   * expand trivial macro defitions
 //
 // The process of unqualifying types can produce new residual definitions, so we
 // need to "drain" those (ie: commit those definitions).  However, because we can
