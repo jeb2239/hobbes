@@ -1009,10 +1009,24 @@ void initDefOperators(cc* c) {
   DEC(ladd); DEC(lsub); DEC(lmul); DEC(ldiv); DEC(lrem);
   DEC(fadd); DEC(fsub); DEC(fmul); DEC(fdiv);
   DEC(dadd); DEC(dsub); DEC(dmul); DEC(ddiv);
+  //Hidden
+  BINDF(".cast",      new castexp());
+  BINDF(".adjustPtr",     new adjptr());
+  BINDF(".adjustVtblPtr", new adjvtblptr());
+
+  // hidden functions for generic record I/O
+  BINDF(".recordHeadLabel", new recHLabel());
+  BINDF(".recordHeadValue", new recHValue());
+  BINDF(".recordTail",      new recTail());
+
+  // hidden functions for generic variant I/O
+  BINDF(".variantHeadLabel",  new varHLabel());
+  BINDF(".variantSplit",      new varSplit());
+  BINDF(".variantInjectHead", new varInjH());
+
 
   BINDF("if",         new ifexp());
   BINDF("id",         new idexp());
-  BINDF(".cast",      new castexp());
   BINDF("unsafeCast", new castexp()); // perhaps qualify this so that 'memory-representation equivalence' can be decided safely at compile-time?
 
   // allocate space for some type
@@ -1034,18 +1048,7 @@ void initDefOperators(cc* c) {
   BINDF("applyCFn", new applyCFn());
 
   // hidden runtime functions for C++ inheritance / pointer-adjustment
-  BINDF(".adjustPtr",     new adjptr());
-  BINDF(".adjustVtblPtr", new adjvtblptr());
 
-  // hidden functions for generic record I/O
-  BINDF(".recordHeadLabel", new recHLabel());
-  BINDF(".recordHeadValue", new recHValue());
-  BINDF(".recordTail",      new recTail());
-
-  // hidden functions for generic variant I/O
-  BINDF(".variantHeadLabel",  new varHLabel());
-  BINDF(".variantSplit",      new varSplit());
-  BINDF(".variantInjectHead", new varInjH());
 
   // access std::string fields
   c->bind("stdstrsize", &stdstrsize);

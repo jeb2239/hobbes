@@ -1,5 +1,21 @@
 
 #include "arith.hob"
+#include "convert.hob"
+#include "amapping.hob"
+#include "eq.hob"
+#include "eqord.hob"
+#include "farray.hob"
+#include "strings.hob"
+#include "farrfilt.hob"
+#include "lookup.hob"
+#include "show.hob"
+#include "list.hob"
+#include "patterns.hob"
+#include "set.hob"
+#include "storage.hob"
+#include "sort.hob"
+#include "streams.hob"
+#include "proccodec.hob"
 
 putInt a = putStr(showInt(a))
 

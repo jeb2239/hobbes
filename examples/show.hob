@@ -5,12 +5,12 @@ class Show a where
   show :: a -> [char]
 
 // control output precision of floats and doubles
-floatFormatConfig = do {
+/*floatFormatConfig = do {
   c = (newPrim() :: {floatPrecision:int,doublePrecision:int});
   c.floatPrecision  <- (-1);
   c.doublePrecision <- (-1);
   return c
-}
+}*/
 
 // primitive serialization
 instance Show () where
@@ -35,10 +35,10 @@ instance Show long where
   show = showLong
 
 instance Show float where
-  show x = showFloat(x, floatFormatConfig.floatPrecision)
+  show x = showFloat(x) //, floatFormatConfig.floatPrecision)
 
 instance Show double where
-  show x = showDouble(x, floatFormatConfig.doublePrecision)
+  show x = showDouble(x) //, floatFormatConfig.doublePrecision)
 
 instance Show [byte] where
   show bs = "0x" ++ concat(map(showByteV,bs))
@@ -50,13 +50,13 @@ instance Show <std.string> where
   show = showString
 
 instance Show timespan where
-  show = showTimespan
+  show = showTimespanV
 
 instance Show time where
-  show = showTime
+  show = showTimeV
 
 instance Show datetime where
-  show = showDateTime
+  show = showDateTimeV
 
 // serialization for tuples
 class ShowT a where

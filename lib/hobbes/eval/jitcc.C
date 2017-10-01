@@ -790,7 +790,7 @@ void jitcc::unsafeCompileFunctions(UCFS* ufs) {
 }
 
 llvm::Value* jitcc::compileAllocStmt(llvm::Value* sz, llvm::Type* mty, bool zeroMem) {
-  llvm::Function* f = lookupFunction(zeroMem ? "mallocz" : "malloc");
+  llvm::Function* f = lookupFunction(zeroMem ? "memallocz" : "memalloc");
   if (!f) throw std::runtime_error("Expected heap allocation function as call.");
   return builder()->CreateBitCast(fncall(builder(), f, sz), mty);
 }

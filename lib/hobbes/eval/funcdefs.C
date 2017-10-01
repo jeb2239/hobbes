@@ -283,7 +283,8 @@ extern "C" const maybe<long>::ty* readLong(const array<char>* x) {
   return readISV<long>(x);
 }
 
-extern "C" const array<char>* showFloat(float x, int p) {
+extern "C" const array<char>* showFloat(float x) {
+  int p=4;
   if (p <= 0) {
     return makeString(str::from(x)+"f");
   } else {
@@ -298,7 +299,9 @@ extern "C" const maybe<float>::ty* readFloat(const array<char>* x) {
   return readISV<float>(x);
 }
 
-extern "C" const array<char>* showDouble(double x, int p) {
+extern "C" const array<char>* showDouble(double x) {
+  int p=4;
+
   std::ostringstream ss;
   if (p > 0) {
     ss << std::setiosflags(std::ios::fixed);
@@ -449,7 +452,7 @@ long truncd(double x) {
 }
 
 void dbglog(const std::string&);
-void failvarmatch(const array<char>* file, size_t line, const array<char>* txt, char* addr) {
+extern "C" void failvarmatch(const array<char>* file, size_t line, const array<char>* txt, char* addr) {
   std::ostringstream ss;
   ss << "FATAL ERROR: Unexpected variant match failure on " << (void*)addr << " at " << makeStdString(file) << ":" << line << " ('" << makeStdString(txt) << "')";
   dbglog(ss.str());
@@ -521,13 +524,16 @@ void readOrMark(int fd, char* b, size_t sz) {
   }
 }
 
+
 template <typename T>
   T fdRead(int fd) {
     T x = T();
     readOrMark(fd, (char*)&x, sizeof(T));
     return x;
   }
-
+extern "C" bool fdReadBool(int fd){
+  return fdRead<bool>(fd);
+}
 void writeOrMark(int fd, const char* b, size_t sz) {
   try {
     fdwrite(fd, b, sz);
@@ -540,6 +546,9 @@ template <typename T>
   void fdWrite(int fd, T x) {
     writeOrMark(fd, (const char*)&x, sizeof(T));
   }
+    extern "C" void fdWriteBool(int fd,bool x){
+      return fdWrite<bool>(fd,x);
+    }
 
 void fdWriteChars(int fd, const array<char>* cs) {
   writeOrMark(fd, cs->data, cs->size);
@@ -635,12 +644,40 @@ void initStdFuncDefs(cc& ctx) {
 #define HC 0
 #ifdef HC
   ctx.bind("memalloc",memalloc);
+  ctx.bind("memallocz",memallocz);
   ctx.bind("putTest",putTest);
   ctx.bind("putStr",putStr);
   ctx.bind("printMemoryPool",printMemoryPool);
-  ctx.bind("cstrlen", &cstrlen); // in the case of static compile this is just to make the checker happy.
-  ctx.bind("cstrelem", &cstrelem);
-  ctx.bind("showInt", &showInt);// convert int to string 
+  ctx.bind("getMemoryPool",         &getMemoryPool);
+  ctx.bind("unsafeSetRegion",       &unsafeSetRegion);
+  ctx.bind("unsafeMakeMemRegion",   &unsafeMakeMemRegion);
+  ctx.bind("unsafeClearMemoryPool", &unsafeClearMemoryPool);
+  ctx.bind("unsafeAbortAtMemUsage", &unsafeAbortAtMemUsage);
+  ctx.bind("cstrlen", cstrlen); // in the case of static compile this is just to make the checker happy.
+  ctx.bind("cstrelem", cstrelem);
+  ctx.bind("showInt", showInt);// convert int to string 
+  ctx.bind("showChar",showChar);
+  ctx.bind("showByte",showByte);
+  ctx.bind("showByteV",showByteV);
+  ctx.bind("showShort",    &showShort);
+  ctx.bind("showLong",     &showLong);
+  ctx.bind("showFloat",    &showFloat);
+  ctx.bind("fdReadBool", &fdReadBool);
+  ctx.bind("fdWriteBool",fdWriteBool);
+  ctx.bind("showDouble",   &showDouble);
+  ctx.bind("showString",   &showString);
+  ctx.bind("showTimespanV", &showTimespanV);
+  ctx.bind("showTimeV",     &showTimeV);
+  ctx.bind("showDateTimeV", &showDateTimeV);
+  ctx.bind("formatTimeV",     &formatTimeV);
+  ctx.bind("readChar",   &readChar);
+  ctx.bind("readByte",   &readByte);
+  ctx.bind("readShort",  &readShort);
+  ctx.bind("readInt",    &readInt);
+  ctx.bind("readLong",   &readLong);
+  ctx.bind("readFloat",  &readFloat);
+  ctx.bind("readDouble", &readDouble);
+  ctx.bind("failvarmatch", &failvarmatch);
 
 #endif
 
