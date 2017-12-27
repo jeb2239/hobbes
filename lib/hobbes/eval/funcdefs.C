@@ -534,6 +534,35 @@ template <typename T>
 extern "C" bool fdReadBool(int fd){
   return fdRead<bool>(fd);
 }
+
+extern "C" unsigned char  fdReadByte(int fd){
+  return fdRead<unsigned char>(fd);
+}
+
+extern "C" char fdReadChar(int fd){
+  return fdRead<char>(fd);
+}
+
+extern "C" short fdReadShort(int fd){
+  return fdRead<short>(fd);
+}
+
+extern "C" int fdReadInt(int fd){
+  return fdRead<int>(fd);
+}
+extern "C" long fdReadLong(int fd){
+  return fdRead<long>(fd);
+}
+extern "C" float fdReadFloat(int fd){
+  return fdRead<float>(fd);
+}
+
+extern "C" double fdReadDouble(int fd){
+  return fdRead<double>(fd);
+}
+
+
+
 void writeOrMark(int fd, const char* b, size_t sz) {
   try {
     fdwrite(fd, b, sz);
@@ -549,6 +578,28 @@ template <typename T>
     extern "C" void fdWriteBool(int fd,bool x){
       return fdWrite<bool>(fd,x);
     }
+    extern "C" void fdWriteByte(int fd,unsigned char x){
+      return fdWrite<unsigned char>(fd,x);
+    }
+    extern "C" void fdWriteChar(int fd, char x){
+      return fdWrite<char>(fd,x);
+    }
+    extern "C" void fdWriteShort(int fd, short x){
+      return fdWrite<short>(fd,x);
+    }
+    extern "C" void fdWriteInt(int fd,int x){
+      return fdWrite<int>(fd,x);
+    }
+    extern "C" void fdWriteLong(int fd,long x){
+      return fdWrite<long>(fd,x);
+    }
+    extern "C" void fdWriteFloat(int fd,float x){
+      return fdWrite<float>(fd,x);
+    }
+    extern "C" void fdWriteDouble(int fd,double x){
+      return fdWrite<double>(fd,x);
+    }
+
 
 void fdWriteChars(int fd, const array<char>* cs) {
   writeOrMark(fd, cs->data, cs->size);
@@ -557,6 +608,7 @@ void fdWriteChars(int fd, const array<char>* cs) {
 void fdWriteBytes(int fd, const array<unsigned char>* bs) {
   writeOrMark(fd, (const char*)bs->data, bs->size);
 }
+
 
 /***********
  * bind to basic compress/decompress logic in zlib
@@ -678,6 +730,20 @@ void initStdFuncDefs(cc& ctx) {
   ctx.bind("readFloat",  &readFloat);
   ctx.bind("readDouble", &readDouble);
   ctx.bind("failvarmatch", &failvarmatch);
+  ctx.bind("fdReadByte", &fdReadByte);
+  ctx.bind("fdReadChar",fdReadChar);
+  ctx.bind("fdWriteByte", &fdWriteByte );
+  ctx.bind("fdWriteChar",fdWriteChar);
+  ctx.bind("fdWriteShort",fdWriteShort);
+  ctx.bind("fdReadShort",fdReadShort);
+  ctx.bind("fdReadInt",fdReadInt);
+  ctx.bind("fdWriteInt",fdWriteInt);
+  ctx.bind("fdWriteLong",fdWriteLong);
+  ctx.bind("fdReadLong",fdReadLong);
+  ctx.bind("fdWriteFloat",fdWriteFloat);
+  ctx.bind("fdReadFloat", fdReadFloat);
+  ctx.bind("fdReadDouble",fdReadDouble);
+  ctx.bind("fdWriteDouble", fdWriteDouble);
 
 #endif
 

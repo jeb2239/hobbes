@@ -1,0 +1,5 @@
+#include "prelude.hob"
+
+
+main::int -> ()
+main a = putStr(show([2,3,4,5,6]))

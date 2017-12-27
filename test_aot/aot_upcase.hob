@@ -1,0 +1,6 @@
+#include "prelude.hob"
+
+
+
+main::int -> ()
+main a = let g = ucase("cats") in putStr(g)

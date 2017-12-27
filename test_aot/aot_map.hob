@@ -1,0 +1,7 @@
+#include "prelude.hob"
+
+main::int -> ()
+main a = 
+    let cs = "Ayo" in 
+        let bs = map(toLower, cs[0:])
+        in putStr(bs)
