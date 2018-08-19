@@ -51,3 +51,32 @@ TEST(Compiler, liftApathy) {
   EXPECT_EQ(show(lift<const BV&>::type(c())), "(<char> * long)");
 }
 
+TEST(Compiler, compileFnTypes) {
+  EXPECT_EQ(c().compileFn<int(const std::string&)>("_","42")(""), 42);
+  EXPECT_EQ(c().compileFn<int(*)(const std::string&)>("_","42")(""), 42);
+}
+
+static int appC(const closure<int(int)>& c) { return c(7); }
+TEST(Compiler, liftClosTypes) {
+  c().bind("appC", &appC);
+  EXPECT_EQ(c().compileFn<int()>("(\\x.appC(\\y.x*y-x))(7)")(), 42);
+}
+
+TEST(Compiler, Parsing) {
+  EXPECT_TRUE((c().compileFn<bool(const std::pair<char,char>&)>("p", "p==('\\\\','\\\\')")(std::make_pair('\\','\\'))));
+}
+
+TEST(Compiler, ParseTyDefStaging) {
+  compile(
+    &c(),
+    c().readModule(
+      "bob = 42\n"
+      "type BT = (TypeOf `bob` x) => x\n"
+      "type BTI = (TypeOf `newPrim()::BT` x) => x\n"
+      "frank :: BTI\n"
+      "frank = 3\n"
+    )
+  );
+  EXPECT_EQ(c().compileFn<int()>("frank")(), 3);
+}
+

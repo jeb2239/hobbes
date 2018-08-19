@@ -31,7 +31,7 @@ const uint8_t* hstoreUnsafeReadFixedArray(storage::Transaction& txn, size_t byte
 
   memcpy(result->data, txn.ptr(), bytes);
   txn.skip(bytes);
-  return (const uint8_t*)result;
+  return reinterpret_cast<const uint8_t*>(result);
 }
 
 cc* loggerCompiler() {
@@ -82,6 +82,25 @@ std::string freshTempFile(const std::string& dirPfx) {
   }
 }
 
+struct Session {
+  // the file being written into
+  hobbes::writer* db;
+
+  // sections of the file for structured data
+  typedef std::vector<hobbes::StoredSeries*> StoredSeriess;
+  StoredSeriess streams;
+
+  // functions for actually writing stream data
+  typedef void (*WriteFn)(hobbes::storage::Transaction*);
+  typedef std::vector<WriteFn> WriteFns;
+
+  WriteFns writeFns;
+
+  // scratch space to accumulate transaction descriptions
+  // (just used for manual-commit sessions)
+  std::vector<size_t> txnScratch;
+};
+
 ProcessTxnF initStorageSession(Session* s, const std::string& dirPfx, storage::PipeQOS qos, storage::CommitMethod cm, const storage::statements& stmts) {
   static std::mutex initMtx; // make sure that only one thread initializes at a time
   std::lock_guard<std::mutex> lk(initMtx);
@@ -114,7 +133,11 @@ ProcessTxnF initStorageSession(Session* s, const std::string& dirPfx, storage::P
       txnEntries.push_back(Variant::Member(stmt.name, filerefty(ss->storageType()), stmt.id));
     }
 
-    if (cm != storage::AutoCommit) {
+    if (cm == storage::AutoCommit) {
+      out << " ==> log :: <any of the above>" << std::endl;
+
+      s->streams.push_back(new StoredSeries(c, s->db, "log", Variant::make(txnEntries), 10000));
+    } else {
       out << " ==> transactions :: <any of the above>" << std::endl;
 
       Record::Members txnRecord;
@@ -153,7 +176,9 @@ ProcessTxnF initStorageSession(Session* s, const std::string& dirPfx, storage::P
         while (txn.canRead(sizeof(uint32_t))) {
           uint32_t id = *txn.read<uint32_t>();
           if (id < s->writeFns.size()) {
+            std::pair<uint32_t, long> log(id, s->streams[id]->writePosition());
             s->writeFns[id](&txn);
+            s->streams.back()->record(&log, false);
           } else {
             out << "got bad log id #" << id << std::endl;
           }
@@ -189,6 +214,74 @@ ProcessTxnF initStorageSession(Session* s, const std::string& dirPfx, storage::P
         s->db->signalUpdate();
       };
   }
+}
+
+// support merging log session data where type structures are identical
+class SessionGroup {
+public:
+  virtual ~SessionGroup() { }
+  virtual ProcessTxnF appendStorageSession(const std::string& dirPfx, hobbes::storage::PipeQOS qos, hobbes::storage::CommitMethod cm, const hobbes::storage::statements& stmts) = 0;
+};
+
+class ConsolidateGroup : public SessionGroup {
+public:
+  ProcessTxnF appendStorageSession(const std::string& dirPfx, hobbes::storage::PipeQOS qos, hobbes::storage::CommitMethod cm, const hobbes::storage::statements& stmts) {
+    std::lock_guard<std::mutex> slock(this->m);
+    for (auto* cs : this->sessions) {
+      if (dirPfx == cs->dirPfx && qos == cs->qos && cm == cs->cm && stmts == cs->stmts) {
+        return csfn(cs);
+      }
+    }
+
+    auto* cs = new CSession;
+    cs->dirPfx = dirPfx;
+    cs->qos    = qos;
+    cs->cm     = cm;
+    cs->stmts  = stmts;
+    cs->sproc  = initStorageSession(&cs->s, dirPfx, qos, cm, stmts);
+    this->sessions.push_back(cs);
+    return csfn(cs);
+  }
+private:
+  struct CSession {
+    std::string                   dirPfx;
+    hobbes::storage::PipeQOS      qos;
+    hobbes::storage::CommitMethod cm;
+    hobbes::storage::statements   stmts;
+    Session                       s;
+    std::mutex                    sm;
+    ProcessTxnF                   sproc;
+  };
+  std::vector<CSession*> sessions;
+  std::mutex m;
+
+  static ProcessTxnF csfn(CSession* cs) {
+    return 
+      [cs](storage::Transaction& txn) {
+        std::lock_guard<std::mutex> slock(cs->sm);
+        cs->sproc(txn);
+      };
+  }
+};
+
+class SimpleGroup : public SessionGroup {
+public:
+  ProcessTxnF appendStorageSession(const std::string& dirPfx, hobbes::storage::PipeQOS qos, hobbes::storage::CommitMethod cm, const hobbes::storage::statements& stmts) {
+    Session* s = new Session;
+    return initStorageSession(s, dirPfx, qos, cm, stmts);
+  }
+};
+
+SessionGroup* makeSessionGroup(bool consolidate) {
+  if (consolidate) {
+    return new ConsolidateGroup();
+  } else {
+    return new SimpleGroup();
+  }
+}
+
+ProcessTxnF appendStorageSession(SessionGroup* sg, const std::string& dirPfx, hobbes::storage::PipeQOS qos, hobbes::storage::CommitMethod cm, const hobbes::storage::statements& stmts) {
+  return sg->appendStorageSession(dirPfx, qos, cm, stmts);
 }
 
 }

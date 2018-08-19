@@ -102,6 +102,13 @@ template <typename T>
     }
   }
 
+std::string show(const Regex& rgx) {
+  std::ostringstream ss;
+  rgx.show(ss);
+  return ss.str();
+}
+std::string show(const RegexPtr& rgx) { return show(*rgx); }
+
 // shorthand constructors for regex AST forms
 RegexPtr epsilon() {
   return RegexPtr(new REps());
@@ -201,8 +208,8 @@ RegexPtr unescapePatChar(rchar_t x) {
 typedef std::pair<size_t, std::set<rchar_t>> DCharset;
 
 void charRange(rchar_t i, rchar_t e, std::set<rchar_t>* out) {
-  for (uint32_t x = (uint32_t)i; x <= (uint32_t)e; ++x) {
-    out->insert((rchar_t)x);
+  for (size_t x = static_cast<size_t>(i); x <= static_cast<size_t>(e); ++x) {
+    out->insert(static_cast<rchar_t>(x));
   }
 }
 
@@ -293,8 +300,7 @@ DRegex diffRegex(const RegexPtr& lhs, const std::string& x, size_t i) {
       // now the group body just matches as if inline
       // (but we may bind to the group match result)
       DRegex g = diffRegex(epsilon(), x, i+1);
-      DRegex s = diffRegex(bindTo(b, g.second), x, g.first);
-      return DRegex(s.first, sequence(lhs, s.second));
+      return diffRegex(sequence(lhs, bindTo(b, g.second)), x, g.first);
     }
     case '|': {
       DRegex n = diffRegex(epsilon(), x, i+1);
@@ -371,10 +377,10 @@ str::seq bindingNames(const RegexPtr& rgx) {
  ******************************/
 typedef uint32_t state;
 typedef std::set<state> stateset;
-static const state nullState = (state)-1;
+static const state nullState = static_cast<state>(-1);
 
 typedef uint32_t result;
-static const result nullResult = (result)-1;
+static const result nullResult = static_cast<result>(-1);
 
 struct char_range_ord {
   static bool lt(rchar_t lhs, rchar_t rhs) {
@@ -421,11 +427,11 @@ typedef std::vector<NFAState> NFA;
 
 // for a given set of NFA states, find the set of non-overlapping char ranges
 CharRanges usedCharRanges(const NFA& nfa, const stateset& ss) {
-  CharRanges r;
+  CharRanges rs;
   for (auto s : ss) {
-    r = nfa[s].chars.disjointRanges(r);
+    rs = nfa[s].chars.disjointRanges(rs);
   }
-  return r;
+  return rs;
 }
 
 // accumulate a regex match into an NFA
@@ -652,16 +658,24 @@ stateset epsState(const EpsClosure& ec, const stateset& ss) {
   return r;
 }
 
+void print(std::ostream& out, const stateset& ss) {
+  out << "{";
+  auto s = ss.begin();
+  if (s != ss.end()) {
+    out << *s;
+    ++s;
+    for (; s != ss.end(); ++s) {
+      out << ", " << *s;
+    }
+  }
+  out << "}";
+}
+
 void print(std::ostream& out, const EpsClosure& ec) {
   for (const auto& eset : ec) {
-    out << eset.first << " -> {";
-    auto ss = eset.second.begin();
-    out << *ss;
-    ++ss;
-    for (; ss != eset.second.end(); ++ss) {
-      out << ", " << *ss;
-    }
-    out << "}" << std::endl;
+    out << eset.first << " -> ";
+    print(out, eset.second);
+    out << std::endl;
   }
 }
 
@@ -700,20 +714,27 @@ typedef std::map<stateset, state> Nss2Ds;
 
 // create a DFA state from a set of NFA states
 // (or if it's already been made, just return the existing state)
-state dfaState(const NFA& nfa, const EpsClosure& ec, Nss2Ds* nss2ds, DFA* dfa, const stateset& ss, RStates* rstates) {
+state dfaState(const cc* c, const NFA& nfa, const EpsClosure& ec, Nss2Ds* nss2ds, DFA* dfa, const stateset& ss, RStates* rstates) {
   // did we already make this state?  if so, just return it
   auto didIt = nss2ds->find(ss);
-  if (didIt != nss2ds->end()) { return didIt->second; }
+  if (didIt != nss2ds->end()) {
+    return didIt->second;
+  }
 
   // we need to make this state -- allocate it and remember it
   state result = dfa->size();
   dfa->resize(dfa->size() + 1);
+
+  if (c->throwOnHugeRegexDFA() and c->regexDFAOverNFAMaxRatio() > 0 and (dfa->size() / nfa.size() > size_t(c->regexDFAOverNFAMaxRatio()))) {
+    throw std::runtime_error("regexes DFA over NFA Max ratio was breached");
+  }
+
   (*nss2ds)[ss] = result;
 
   // ok, how can we transition out of here?
   // for each case, we'll go to a set of NFA states (recursively)
   for (auto cr : usedCharRanges(nfa, ss)) {
-    auto ns = dfaState(nfa, ec, nss2ds, dfa, nfaTransition(nfa, ec, ss, cr), rstates);
+    auto ns = dfaState(c, nfa, ec, nss2ds, dfa, nfaTransition(nfa, ec, ss, cr), rstates);
     (*dfa)[result].chars.insert(cr, ns);
   }
 
@@ -743,7 +764,7 @@ state dfaState(const NFA& nfa, const EpsClosure& ec, Nss2Ds* nss2ds, DFA* dfa, c
   return result;
 }
 
-void disambiguate(const NFA& nfa, DFA* dfa, RStates* rstates) {
+void disambiguate(const cc* c, const NFA& nfa, DFA* dfa, RStates* rstates) {
   // determine eps* for this NFA
   EpsClosure ec;
   findEpsClosure(nfa, &ec);
@@ -751,7 +772,7 @@ void disambiguate(const NFA& nfa, DFA* dfa, RStates* rstates) {
   // starting from the eps* start state,
   // follow non-eps transitions to eps* successor states
   Nss2Ds nss2ds;
-  dfaState(nfa, ec, &nss2ds, dfa, epsState(ec, 0), rstates);
+  dfaState(c, nfa, ec, &nss2ds, dfa, epsState(ec, 0), rstates);
 }
 
 /*****************************
@@ -858,15 +879,23 @@ static ExprPtr transitionAsCharSwitch(const std::string& fname, const DFAState& 
 }
 
 static ExprPtr charInRange(const ExprPtr& c, const std::pair<rchar_t, rchar_t>& crange, const LexicalAnnotation& rootLA) {
-  return
-    fncall(
-      var("and", rootLA),
-      list(
-        fncall(var("<=", rootLA), list(constant((uint8_t)crange.first, rootLA), c), rootLA),
-        fncall(var("<=", rootLA), list(c, constant((uint8_t)crange.second, rootLA)), rootLA)
-      ),
-      rootLA
-    );
+  if (crange.first == 0 && crange.second == 255) {
+    return constant(true, rootLA);
+  } else if (crange.first == 0) {
+    return fncall(var("blte", rootLA), list(c, constant(static_cast<uint8_t>(crange.second), rootLA)), rootLA);
+  } else if (crange.first == crange.second) {
+    return fncall(var("beq", rootLA), list(c, constant(static_cast<uint8_t>(crange.first), rootLA)), rootLA);
+  } else {
+    return
+      fncall(
+        var("and", rootLA),
+        list(
+          fncall(var("blte", rootLA), list(constant(static_cast<uint8_t>(crange.first), rootLA), c), rootLA),
+          fncall(var("blte", rootLA), list(c, constant(static_cast<uint8_t>(crange.second), rootLA)), rootLA)
+        ),
+        rootLA
+      );
+  }
 }
 
 static ExprPtr transitionAsRangeChecks(const std::string& fname, const std::vector<std::pair<std::pair<rchar_t,rchar_t>, state>>& ranges, const ExprPtr& charExpr, const ExprPtr& defaultResult, const LexicalAnnotation& rootLA) {
@@ -914,7 +943,7 @@ static ExprPtr transitionMapping(const std::string& fname, const DFAState& s, co
   for (const auto& rtn : rtns) {
     sd += 1 + rtn.first.second - rtn.first.first;
   }
-  double avgs = sd / ((double)rtns.size());
+  double avgs = sd / static_cast<double>(rtns.size());
 
   if (avgs <= 2.0) {
     return transitionAsCharSwitch(fname, s, charExpr, defaultResult, rootLA);
@@ -923,7 +952,7 @@ static ExprPtr transitionMapping(const std::string& fname, const DFAState& s, co
   }
 }
 
-void makeDFAFunc(cc* c, const std::string& fname, const DFA& dfa, const LexicalAnnotation& rootLA) {
+void makeExprDFAFunc(cc* c, const std::string& fname, const MonoTypePtr& captureTy, const DFA& dfa, const LexicalAnnotation& rootLA) {
   // F(cap,cs,i,e,s) =
   //   switch (s) {
   //   ...
@@ -943,14 +972,18 @@ void makeDFAFunc(cc* c, const std::string& fname, const DFA& dfa, const LexicalA
   //       ...
   //   ...
   Switch::Bindings bs;
+  MonoTypePtr arrT = freshTypeVar();
+  QualTypePtr qarrElemTy = qualtype(list(ConstraintPtr(new Constraint("Array", list(arrT, primty("char"))))), functy(list(arrT, primty("long")), primty("char")));
+  QualTypePtr qarrT = qualtype(list(ConstraintPtr(new Constraint("Array", list(arrT, primty("char"))))), arrT);
+
   for (size_t s = 0; s < dfa.size(); ++s) {
     // all transitions out of this state
     ExprPtr dispatchExpr =
       transitionMapping(
         fname,
         dfa[s],
-        fncall(var("element", rootLA), list(var("cs", rootLA), var("i", rootLA)), rootLA),
-        constant((int)-1, rootLA),
+        fncall(var("elem", rootLA), list(var("cs", rootLA), var("i", rootLA)), rootLA),
+        constant(static_cast<int>(-1), rootLA),
         rootLA
       );
 
@@ -960,7 +993,7 @@ void makeDFAFunc(cc* c, const std::string& fname, const DFA& dfa, const LexicalA
         var("if", rootLA),
         list(
           fncall(var("leq", rootLA), list(var("i", rootLA), var("e", rootLA)), rootLA),
-          constant((int)(dfa[s].acc), rootLA),
+          constant(static_cast<int>(dfa[s].acc), rootLA),
           dispatchExpr
         ),
         rootLA
@@ -992,24 +1025,75 @@ void makeDFAFunc(cc* c, const std::string& fname, const DFA& dfa, const LexicalA
     }
 
     // do all of this when in this state
-    bs.push_back(Switch::Binding(PrimitivePtr(new Int((int)s, rootLA)), evalChar));
+    bs.push_back(Switch::Binding(PrimitivePtr(new Int(static_cast<int>(s), rootLA)), evalChar));
   }
 
   ExprPtr fndef =
     fn(str::strings("cap", "cs", "i", "e", "s"),
-      let("n", fncall(var("ladd", rootLA), list(var("i", rootLA), constant((long)1, rootLA)), rootLA),
+      let("n", fncall(var("ladd", rootLA), list(var("i", rootLA), constant(static_cast<long>(1), rootLA)), rootLA),
+      let("elem", assume(var("element", rootLA), qarrElemTy, rootLA),
         switchE(
           var("s", rootLA),
           bs,
-          constant((int)-1, rootLA),
+          constant(static_cast<int>(-1), rootLA),
           rootLA
         ),
-        rootLA
-      ),
+      rootLA),rootLA),
       rootLA
     );
 
-  c->define(fname, fndef);
+  c->define(fname, assume(fndef, qualtype(qarrT->constraints(), functy(list(captureTy, arrT, primty("long"), primty("long"), primty("int")), primty("int"))), rootLA));
+}
+
+typedef std::pair<char,char>  CRange;
+typedef std::pair<CRange,int> CTransition;
+typedef array<CTransition>    CTransitions;
+
+DEFINE_STRUCT(
+  DFAStateRep,
+  (CTransitions*, transitions),
+  (int,           acc)
+);
+
+array<DFAStateRep>* makeDFARep(cc* c, const DFA& dfa) {
+  auto result = reinterpret_cast<array<DFAStateRep>*>(c->memalloc(sizeof(size_t) + dfa.size() * sizeof(DFAStateRep)));
+  for (size_t i = 0; i < dfa.size(); ++i) {
+    DFAStateRep& s = result->data[i];
+    auto ctnm = dfa[i].chars.mapping();
+    s.transitions = reinterpret_cast<CTransitions*>(c->memalloc(sizeof(size_t) + ctnm.size() * sizeof(CTransition)));
+    for (size_t j = 0; j < ctnm.size(); ++j) {
+      s.transitions->data[j] = ctnm[j];
+    }
+    s.transitions->size = ctnm.size();
+    s.acc = dfa[i].acc;
+  }
+  result->size = dfa.size();
+  return result;
+}
+
+void makeInterpDFAFunc(cc* c, const std::string& fname, const MonoTypePtr& captureTy, const DFA& dfa, const LexicalAnnotation& rootLA) {
+  MonoTypePtr arrT = freshTypeVar();
+  QualTypePtr qarrElemTy = qualtype(list(ConstraintPtr(new Constraint("Array", list(arrT, primty("char"))))), functy(list(arrT, primty("long")), primty("char")));
+  QualTypePtr qarrT = qualtype(list(ConstraintPtr(new Constraint("Array", list(arrT, primty("char"))))), arrT);
+
+  std::string regexDFADef = ".regexDFA." + freshName();
+  c->bind(regexDFADef, makeDFARep(c, dfa));
+
+  ExprPtr fndef =
+    fn(str::strings("cap", "cs", "i", "e", "s"),
+      fncall(var("runRegexDFA", rootLA), list(var("cs", rootLA), var("i", rootLA), var("e", rootLA), var("s", rootLA), var(regexDFADef, rootLA)), rootLA),
+      rootLA
+    );
+
+  c->define(fname, assume(fndef, qualtype(qarrT->constraints(), functy(list(captureTy, arrT, primty("long"), primty("long"), primty("int")), primty("int"))), rootLA));
+}
+
+void makeDFAFunc(cc* c, const std::string& fname, const MonoTypePtr& captureTy, const DFA& dfa, const LexicalAnnotation& rootLA) {
+  if (dfa.size() < 1000 || !isUnit(captureTy)) {
+    makeExprDFAFunc(c, fname, captureTy, dfa, rootLA);
+  } else {
+    makeInterpDFAFunc(c, fname, captureTy, dfa, rootLA);
+  }
 }
 
 // merge char-range mappings where possible and conflate duplicate result states
@@ -1081,11 +1165,13 @@ EqStates findEquivStates(const DFA& dfa) {
   }
 
   // convert to a representation that makes state substitution explicit
+  //  (follow mapped-to states in case they are also mapped)
   EqStates r;
   for (size_t s0 = 0; s0 < dfa.size(); ++s0) {
     for (size_t s1 = 0; s1 < s0; ++s1) {
       if (eqStates(s0, s1)) {
-        r[s0] = s1;
+        auto s1t = r.find(s1);
+        r[s0] = s1t == r.end() ? s1 : s1t->second;
       }
     }
   }
@@ -1189,7 +1275,7 @@ CRegexes makeRegexFn(cc* c, const Regexes& regexes, const LexicalAnnotation& roo
   // now map this NFA to a DFA
   DFA dfa;
   RStates fstates;
-  disambiguate(nfa, &dfa, &fstates);
+  disambiguate(c, nfa, &dfa, &fstates);
 
   // make all char ranges compact and minimize the results to avoid redundant work in the caller
   mergeCharRangesAndEqResults(&dfa, fstates, &result.rstates);
@@ -1199,7 +1285,7 @@ CRegexes makeRegexFn(cc* c, const Regexes& regexes, const LexicalAnnotation& roo
 
   // translate this DFA to a function
   std::string fname = ".regex." + freshName();
-  makeDFAFunc(c, fname, dfa, rootLA);
+  makeDFAFunc(c, fname, regexCaptureBufferType(regexes), dfa, rootLA);
 
   // and that's the function that the outer match logic should use
   result.fname = fname;

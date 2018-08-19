@@ -3,6 +3,8 @@
 #include <hobbes/db/file.H>
 #include <hobbes/db/series.H>
 #include <hobbes/db/signals.H>
+#include <hobbes/fregion.H>
+#include <hobbes/cfregion.H>
 #include "test.H"
 
 using namespace hobbes;
@@ -95,7 +97,7 @@ TEST(Storage, Create) {
     int n = 1020;
     array<int>* vs = f.define<int>("vs", n);
     EXPECT_TRUE(vs != 0);
-    EXPECT_TRUE(vs->size == 0);
+    EXPECT_TRUE(vs->size == 1020);
 
     initSeq(vs, 0, 0, n);
     EXPECT_EQ(sum(vs), sumFromTo(0, 1019));
@@ -123,10 +125,23 @@ TEST(Storage, SeriesAPI) {
     for (size_t i = 0; i < 10; ++i) {
       SeriesTest st;
       st.x = i;
-      st.y = 3.14159 * ((double)i);
+      st.y = 3.14159 * static_cast<double>(i);
       st.z = makeString("string_" + str::from(i));
       ss(st);
     }
+
+    c().define("f", "inputFile :: (LoadFile \"" + fname + "\" w) => w");
+    EXPECT_TRUE(c().compileFn<bool()>("[x|{x=x}<-f.series_test][:0] == [0..9]")());
+
+    ss.clear();
+    for (size_t i = 0; i < 5; ++i) {
+      SeriesTest st;
+      st.x = i;
+      st.y = 3.14159 * static_cast<double>(i);
+      st.z = makeString("string_" + str::from(i));
+      ss(st);
+    }
+    EXPECT_TRUE(c().compileFn<bool()>("[x|{x=x}<-f.series_test][:0] == [0..4]")());
 
     unlink(fname.c_str());
   } catch (...) {
@@ -198,11 +213,11 @@ TEST(Storage, Alignment) {
     array<int>*   a = f.define<int>("a", 100);
     fileref<int>* r = f.define<fileref<int>>("r");
 
-    EXPECT_EQ(((size_t)s)%sizeof(short),  0);
-    EXPECT_EQ(((size_t)i)%sizeof(int),    0);
-    EXPECT_EQ(((size_t)d)%sizeof(double), 0);
-    EXPECT_EQ(((size_t)a)%sizeof(size_t), 0);
-    EXPECT_EQ(((size_t)r)%sizeof(size_t), 0);
+    EXPECT_EQ(reinterpret_cast<size_t>(s)%sizeof(short),  size_t(0));
+    EXPECT_EQ(reinterpret_cast<size_t>(i)%sizeof(int),    size_t(0));
+    EXPECT_EQ(reinterpret_cast<size_t>(d)%sizeof(double), size_t(0));
+    EXPECT_EQ(reinterpret_cast<size_t>(a)%sizeof(size_t), size_t(0));
+    EXPECT_EQ(reinterpret_cast<size_t>(r)%sizeof(size_t), size_t(0));
     unlink(fname.c_str());
   } catch (...) {
     unlink(fname.c_str());
@@ -251,7 +266,7 @@ TEST(Storage, EarlyStaging) {
 
     cc rc;
     rc.define("f", "inputFile :: (LoadFile \"" + fname + "\" x) => x");
-    EXPECT_TRUE(rc.compileFn<bool()>("capacity(f.vs) == 100")());
+    EXPECT_TRUE(rc.compileFn<bool()>("length(load(f.vs)) == 100")());
 
     unlink(fname.c_str());
   } catch (...) {
@@ -267,14 +282,14 @@ TEST(Storage, ScriptSignals) {
     cc wc;
     wc.define("f",     "writeFile(\"" + fname + "\") :: ((file) _ {vs:[int]@?})");
     wc.define("pushv", "\\f vs v.do { lvs = load(vs); lvs[length(lvs)] <- v; unsafeSetLength(lvs, length(lvs) + 1); signalUpdate(f); }");
-    wc.compileFn<void()>("f.vs <- allocateArray(1000L)")();
+    wc.compileFn<void()>("do{f.vs <- allocateArray(1000L);unsafeSetLength(load(f.vs),0L);}")();
 
     // start a reader with a watch on the writer's array set to increment a couple of local values
     cc rc;
     std::pair<long, int> lensum(0, 0);
     rc.bind("lensum", &lensum);
     rc.define("f", "readFile(\"" + fname + "\") :: ((file) _ {vs:[int]@?})");
-    rc.compileFn<void()>("addFileSignal(f.vs, \\_.let _ = lensum.0 <- length(load(f.vs)); _ = lensum.1 <- sum(load(f.vs)) in true)")();
+    rc.compileFn<void()>("addFileSignal(f.vs, \\_.do{lensum.0 <- length(load(f.vs));lensum.1 <- sum(load(f.vs)); return true})")();
 
     // now write a few changes and make sure that they're detected
     wc.compileFn<void()>("pushv(f, f.vs, 0)")();
@@ -341,13 +356,164 @@ TEST(Storage, Lift) {
     auto* xs = w.define< std::pair<int, double> >("xs", 100);
     for (size_t i = 0; i < 100; ++i) {
       xs->data[i].first  = i+1;
-      xs->data[i].second = (double)i;
+      xs->data[i].second = static_cast<double>(i);
     }
     xs->size = 100;
 
     cc rc;
     rc.define("f", "inputFile :: (LoadFile \"" + fname + "\" w) => w");
     EXPECT_EQ(rc.compileFn<int()>("sum([x|(x,_)<-f.xs])")(), 5050);
+
+    unlink(fname.c_str());
+  } catch (...) {
+    unlink(fname.c_str());
+    throw;
+  }
+}
+
+DEFINE_ENUM(
+  FRTestFood,
+  (Hamburger),
+  (HotDog),
+  (Pickle)
+);
+
+DEFINE_VARIANT(
+  MStr,
+  (nothing, char),
+  (just,    std::string)
+);
+
+DEFINE_STRUCT(
+  FRTest,
+  (int,                      x),
+  (double,                   y),
+  (std::vector<std::string>, z),
+  (FRTestFood,               u),
+  (MStr,                     v)
+);
+
+TEST(Storage, FRegionCompatibility) {
+  std::string fname = mkFName();
+  try {
+    fregion::writer f(fname);
+    auto& s = f.series<FRTest>("frtest");
+    for (size_t i = 0; i < 1000; ++i) {
+      FRTest t;
+      t.x = static_cast<int>(i);
+      t.y = 3.14159*static_cast<double>(i);
+      t.z.push_back("a");
+      t.z.push_back("b");
+      t.z.push_back("c");
+      t.u = FRTestFood::HotDog();
+      t.v = MStr::just("chicken");
+      s(t);
+    }
+
+    EXPECT_TRUE(isDBFile(fname));
+
+    cc rc;
+    rc.define("f", "inputFile :: (LoadFile \"" + fname + "\" w) => w");
+    EXPECT_EQ(rc.compileFn<size_t()>("size([() | x <- f.frtest, x.z == [\"a\", \"b\", \"c\"] and x.u === |HotDog| and x.v matches |just=\"chicken\"|])")(), size_t(1000));
+
+    fregion::reader rf(fname);
+    auto rs = rf.series<FRTest>("frtest");
+    FRTest t;
+    size_t j = 0;
+    while (rs.next(&t)) {
+      EXPECT_EQ(t.x, static_cast<int>(j));
+      ++j;
+    }
+    unlink(fname.c_str());
+  } catch (...) {
+    unlink(fname.c_str());
+    throw;
+  }
+}
+
+TEST(Storage, DArrayMemLayout) {
+  EXPECT_TRUE(c().compileFn<bool()>("show([unsafeCast(\"jimmy\")::((darray char)),unsafeCast(\"chicken\")]) == \"[\\\"jimmy\\\", \\\"chicken\\\"]\"")());
+}
+
+static const size_t recordCount = 100;
+
+DEFINE_VARIANT(
+  MyVariant,
+  (jimmy, int),
+  (bob, std::string)
+);
+
+struct ShowMyVariant : MyVariantVisitor<int> {
+  int jimmy(const int& x) const { std::cout << "|jimmy=" << x << "|"; return 0; }
+  int bob(const std::string& x) const { std::cout << "|bob=" << x << "|"; return 0; }
+};
+
+DEFINE_ENUM(
+  MyColor,
+  (Red),
+  (Green),
+  (Blue),
+  (Magenta)
+);
+
+typedef std::vector<std::string> strs;
+
+DEFINE_STRUCT(
+  MyStruct,
+  (int,       x),
+  (uint8_t,   y),
+  (MyColor,   c),
+  (MyVariant, v),
+  (strs,      f)
+);
+
+TEST(Storage, CFRegionIO) {
+  std::string fname = mkFName();
+  try {
+    // write some compressed data
+    {
+      hobbes::fregion::cwriter w(fname);
+      auto& xs = w.series<MyStruct>("xs");
+      for (size_t i = 0; i < 100; ++i) {
+        MyStruct s;
+        s.x = i;
+        s.y = i;
+        s.c = static_cast<MyColor::Enum>(i%4);
+        if (i%2 == 0) {
+          s.v = MyVariant::jimmy(static_cast<int>(42.0*sin(i)));
+        } else {
+          s.v = MyVariant::bob("bob #" + str::from(i));
+        }
+        s.f.resize(i%10);
+        for (size_t k = 0; k < s.f.size(); ++k) {
+          s.f[k] = str::from(k) + " Yellowstone bears";
+        }
+        xs(s);
+      }
+    }
+
+    // verify that it reads back in-order correctly
+    {
+      hobbes::fregion::creader r(fname);
+      auto& xs = r.series<MyStruct>("xs");
+      size_t i = 0;
+      MyStruct s;
+      while (xs.next(&s)) {
+        EXPECT_EQ(size_t(s.x), i);
+        EXPECT_EQ(s.y, uint8_t(i));
+        EXPECT_EQ(s.c, MyColor(static_cast<MyColor::Enum>(i%4)));
+        if (i%2 == 0) {
+          EXPECT_EQ(s.v, MyVariant::jimmy(static_cast<int>(42.0*sin(i))));
+        } else {
+          EXPECT_EQ(s.v, MyVariant::bob("bob #" + str::from(i)));
+        }
+        EXPECT_EQ(s.f.size(), i%10);
+        for (size_t k = 0; k < s.f.size(); ++k) {
+          EXPECT_EQ(s.f[k], str::from(k) + " Yellowstone bears");
+        }
+        ++i;
+      }
+    }
 
     unlink(fname.c_str());
   } catch (...) {

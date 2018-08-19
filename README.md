@@ -37,7 +37,7 @@ In addition, the build process will produce two utility programs, `hi` and `hog`
 
 Let's consider how to embed hobbes in a simple C++ program.  This code implements a very basic shell, similar to `hi`:
 
-```
+```C++
 #include <iostream>
 #include <stdexcept>
 #include <hobbes/hobbes.H>
@@ -230,13 +230,13 @@ If we're using hobbes inside of a C++ process (as opposed to just running script
 
 For example, consider a C++ function that we might have already defined:
 
-```
+```C++
 int applyDiscreteWeighting(int x, int y) { return x * y; }
 ```
 
 Now we can import this definition into our previous program, and bind it to our `hobbes::cc` instance by adding this line:
 
-```
+```C++
   c.bind("applyDiscreteWeighting", &applyDiscreteWeighting);
 ```
 
@@ -251,7 +251,7 @@ Then when we run our program, its shell will allow use of this function and will
 
 In other cases, it may be more convenient to use a type understood natively by hobbes and with dynamic memory allocation:
 
-```
+```C++
 typedef std::pair<size_t, const hobbes::array<char>*> MyRecord;
 
 const hobbes::array<MyRecord>* loadRecords(int key) {
@@ -288,7 +288,7 @@ These calls to `hobbes::makeArray` and `hobbes::makeString` will allocate out of
 
 If we'd prefer to represent records by structs with significant field names rather than as tuples, we can instead define our type with the `DEFINE_STRUCT` macro (this is purely a syntactic difference -- the final runtime representation of tuples and structs is identical in hobbes).  For example, if we'd defined the `MyRecord` type in the previous example this way:
 
-```
+```C++
 DEFINE_STRUCT(MyRecord,
   (size_t, index),
   (const hobbes::array<char>*, name)
@@ -297,7 +297,7 @@ DEFINE_STRUCT(MyRecord,
 
 And change the initialization code in `loadRecords` to refer to these fields by name:
 
-```
+```C++
 // [...]
     rs->data[i].index = i;
     rs->data[i].name  = hobbes::makeString(names[i % 4]);
@@ -324,7 +324,7 @@ index    name
 
 We can also bind "in reverse" using C function types, so that rather than making our C++ code appear to be valid hobbes symbols, we can make hobbes expressions appear to be valid C++ symbols.  For example, consider a C++ binding like:
 
-```
+```C++
 int iter2(int (*pf)(int,int), int x) {
   return pf(pf(x, x), pf(x, x));
 }
@@ -342,7 +342,7 @@ Here we've bound a function that itself takes a function as input, and we can us
 
 Variants can be passed between C++ and hobbes as the `hobbes::variant<...>` type:
 
-```
+```C++
 typedef hobbes::variant<int, const hobbes::array<char>*> classification;
 
 const classification* classifyParameter(int x) {
@@ -370,7 +370,7 @@ In the process of binding application variables and functions to a `hobbes::cc` 
 
 For example, consider a binding case like this (meant to represent a complex type hierarchy):
 
-```
+```C++
 class Top {
 public:
   Top(int x, double y, int z) : x(x), y(y), z(z) { }
@@ -425,7 +425,7 @@ If the default logic for lifting your C++ type is insufficient, the `hobbes::lif
 
 Rather than using hobbes to "pull" application data with ad-hoc dynamic queries, we can also use hobbes to "push" large volumes of application data to local or remote storage for real-time or historical analysis.  In this case, we don't need a compiler instance but instead just need to define some basic quality-of-service parameters for the storage process.  For example, let's consider a simple mock weather monitor:
 
-```
+```C++
 #include <hobbes/storage.H>
 #include <stdlib.h>
 
@@ -476,12 +476,14 @@ Now, at the same time that this program runs, we will also want to run another p
 $ hog
 hog : record structured data locally or to a remote process
 
-  usage: hog [-d <dir>] [-g group+] [-p t s host:port] [-s port]
+  usage: hog [-d <dir>] [-g group+] [-p t s host:port+] [-s port] [-c] [-m <dir>]
 where
-  -d <dir>         : decides where structured data (or temporary data) is stored
-  -g group+        : decides which data to record from memory on this machine
-  -p t s host:port : decides to send data to a remote process every t time units or every s uncompressed bytes written
-  -s port          : decides to receive data on the given port
+  -d <dir>          : decides where structured data (or temporary data) is stored
+  -g group+         : decides which data to record from memory on this machine
+  -p t s host:port+ : decides to send data to remote process(es) every t time units or every s uncompressed bytes written
+  -s port           : decides to receive data on the given port
+  -c                : decides to store equally-typed data across processes in a single file
+  -m <dir>          : decides where to place the domain socket for producer registration
 $
 ```
 
@@ -491,26 +493,26 @@ This shows that we can use this program to consume and store data in one of thre
 2. temporary local storage (batched, compressed) pending successful sends to a remote process
 3. a network server, storing into local files from remote processes
 
-For our test program above, it will be enough to just store data locally.  We can start the producer (our test program above) or the consumer in any order.  Let's assume that the test program is already running, then we can run `hog` like this to begin recording data:
+For our test program above, it will be enough to just store data locally.  We must run the `hog` consumer first before starting the producer (our test program).  If we run `hog` and then start start our test program, we should see `hog` produce output that looks like:
 
 ```
 $ hog -g WeatherMonitor
-[2017-01-01T09:00:00.867323]: hog running in mode : |local={ dir="./", groups={"WeatherMonitor"} }|
-[2017-01-01T09:00:00.867536]: polling for creation of memory regions
-[2017-01-01T09:00:00.873862]: group 'WeatherMonitor' ready, preparing to consume its data
-[2017-01-01T09:00:01.637614]:  ==> carPassed :: ([char]) (#1)
-[2017-01-01T09:00:01.733374]:  ==> sensor :: ([char] * { temp:double, humidity:double }) (#0)
-[2017-01-01T09:00:01.848340]: finished preparing statements, writing data to './WeatherMonitor/data-2017.01.01-0.log'
+[2018-01-01T09:00:00.867323]: hog running in mode : |local={ dir="./", groups={"WeatherMonitor"} }|
+[2018-01-01T09:00:00.867536]: polling for creation of memory regions
+[2018-01-01T09:00:00.873862]: group 'WeatherMonitor' ready, preparing to consume its data
+[2018-01-01T09:00:01.637614]:  ==> carPassed :: ([char]) (#1)
+[2018-01-01T09:00:01.733374]:  ==> sensor :: ([char] * { temp:double, humidity:double }) (#0)
+[2018-01-01T09:00:01.848340]: finished preparing statements, writing data to './WeatherMonitor/data-2018.01.01-0.log'
 ```
 
-Now while these two programs (both `hog` and our test program) are left running, we can simultaneously run a third program to load and query this data as it is being recorded.  This is a good use-case for the `hi` program seen previously.  If we enter the same directory where `hog` is running, we can take a look at the data we're recording this way:
+Now while these two programs (both `hog` and our test program) are left running, we can simultaneously run a third program to load and query this data as it is being recorded.  This is a good use-case for the `hi` program seen previously.  If we enter the directory where `hog` is writing its output files, we can take a look at the data we're recording this way:
 
 ```
 $ hi
 hi : an interactive shell for hobbes
       type ':h' for help on commands
 
-> wm = inputFile :: (LoadFile "./WeatherMonitor/data-2017.01.01-0.log" w) => w
+> wm = inputFile :: (LoadFile "./WeatherMonitor/data-2018.01.01-0.log" w) => w
 > wm.sensor
 AZ {temp=44.572017, humidity=44.582017}
 AZ   {temp=3.575808, humidity=3.585808}
@@ -539,7 +541,7 @@ In more complex applications, we might use this ability to accumulate statistics
 
 We could also want to record batched or "transactional" data where our storage statements need to be correlated.  For example, consider a mock cheeseburger order management application:
 
-```
+```C++
 #include <hobbes/storage.H>
 #include <stdlib.h>
 
@@ -590,16 +592,16 @@ Now that we have indicated that we're recording meaningful transactions, when we
 
 ```
 $ hog -g Orders
-[2017-01-01T09:00:00.371394]: hog running in mode : |local={ dir="./", groups={"Orders"} }|
-[2017-01-01T09:00:00.371633]: polling for creation of memory regions
-[2017-01-01T09:00:00.371697]: group 'Orders' ready, preparing to consume its data
-[2017-01-01T09:00:01.615395]:  ==> paymentReceived :: (double) (#4)
-[2017-01-01T09:00:01.736183]:  ==> orderCanceled :: () (#3)
-[2017-01-01T09:00:01.753279]:  ==> drinkOrdered :: ([char]) (#2)
-[2017-01-01T09:00:01.838780]:  ==> productOrdered :: ([char]) (#1)
-[2017-01-01T09:00:01.880418]:  ==> customerEntered :: ([char]) (#0)
-[2017-01-01T09:00:01.927219]:  ==> transactions :: <any of the above>
-[2017-01-01T09:00:02.136798]: finished preparing statements, writing data to './Orders/data-2017.01.01-0.log'
+[2018-01-01T09:00:00.371394]: hog running in mode : |local={ dir="./", groups={"Orders"} }|
+[2018-01-01T09:00:00.371633]: polling for creation of memory regions
+[2018-01-01T09:00:00.371697]: group 'Orders' ready, preparing to consume its data
+[2018-01-01T09:00:01.615395]:  ==> paymentReceived :: (double) (#4)
+[2018-01-01T09:00:01.736183]:  ==> orderCanceled :: () (#3)
+[2018-01-01T09:00:01.753279]:  ==> drinkOrdered :: ([char]) (#2)
+[2018-01-01T09:00:01.838780]:  ==> productOrdered :: ([char]) (#1)
+[2018-01-01T09:00:01.880418]:  ==> customerEntered :: ([char]) (#0)
+[2018-01-01T09:00:01.927219]:  ==> transactions :: <any of the above>
+[2018-01-01T09:00:02.136798]: finished preparing statements, writing data to './Orders/data-2018.01.01-0.log'
 ```
 
 And if we simultaneously load this file, we can see that all of our storage statements can be queried as well as this new "transactions" data.  Each transaction is stored as a timestamp and an array of a variant over all possible storage statements so that we can tell which statements were recorded and in what order:
@@ -609,19 +611,19 @@ $ hi
 hi : an interactive shell for hobbes
       type ':h' for help on commands
 
-> orders = inputFile :: (LoadFile "./Orders/data-2017.01.01-0.log" w) => w
+> orders = inputFile :: (LoadFile "./Orders/data-2018.01.01-0.log" w) => w
 > orders.transactions
                       time                                                                                                              entries
 -------------------------- --------------------------------------------------------------------------------------------------------------------
-2017-04-11T12:19:03.244206                                       [|customerEntered=("Pat")|, |productOrdered=("Bacon Salad")|, |orderCanceled|]
-2017-04-11T12:19:03.244172                                 [|customerEntered=("Beatrice")|, |productOrdered=("Cheese Quake")|, |orderCanceled|]
-2017-04-11T12:19:03.244127    [|customerEntered=("Pat")|, |productOrdered=("Cheese Quake")|, |drinkOrdered=("Water")|, |paymentReceived=(6.4)|]
-2017-04-11T12:19:03.244092                               [|customerEntered=("Pat")|, |productOrdered=("Bacon Salad")|, |paymentReceived=(6.4)|]
-2017-04-11T12:19:03.244047 [|customerEntered=("Pat")|, |productOrdered=("Cheese Quake")|, |drinkOrdered=("Lemonade")|, |paymentReceived=(2.1)|]
-2017-04-11T12:19:03.244013                               [|customerEntered=("Pat")|, |productOrdered=("Bacon Salad")|, |paymentReceived=(7.6)|]
-2017-04-11T12:19:03.243978                           [|customerEntered=("Beatrice")|, |productOrdered=("BBQ Attack")|, |paymentReceived=(3.4)|]
-2017-04-11T12:19:03.243944                          [|customerEntered=("Beatrice")|, |productOrdered=("Bacon Salad")|, |paymentReceived=(3.5)|]
-2017-04-11T12:19:03.243910                             [|customerEntered=("Harv")|, |productOrdered=("Cheese Quake")|, |paymentReceived=(6.3)|]
+2018-01-01T12:19:03.244206                                       [|customerEntered=("Pat")|, |productOrdered=("Bacon Salad")|, |orderCanceled|]
+2018-01-01T12:19:03.244172                                 [|customerEntered=("Beatrice")|, |productOrdered=("Cheese Quake")|, |orderCanceled|]
+2018-01-01T12:19:03.244127    [|customerEntered=("Pat")|, |productOrdered=("Cheese Quake")|, |drinkOrdered=("Water")|, |paymentReceived=(6.4)|]
+2018-01-01T12:19:03.244092                               [|customerEntered=("Pat")|, |productOrdered=("Bacon Salad")|, |paymentReceived=(6.4)|]
+2018-01-01T12:19:03.244047 [|customerEntered=("Pat")|, |productOrdered=("Cheese Quake")|, |drinkOrdered=("Lemonade")|, |paymentReceived=(2.1)|]
+2018-01-01T12:19:03.244013                               [|customerEntered=("Pat")|, |productOrdered=("Bacon Salad")|, |paymentReceived=(7.6)|]
+2018-01-01T12:19:03.243978                           [|customerEntered=("Beatrice")|, |productOrdered=("BBQ Attack")|, |paymentReceived=(3.4)|]
+2018-01-01T12:19:03.243944                          [|customerEntered=("Beatrice")|, |productOrdered=("Bacon Salad")|, |paymentReceived=(3.5)|]
+2018-01-01T12:19:03.243910                             [|customerEntered=("Harv")|, |productOrdered=("Cheese Quake")|, |paymentReceived=(6.3)|]
 ...
 ```
 
@@ -633,7 +635,7 @@ Just as we may need a lightweight, efficient method to record structured applica
 
 We can cut to the chase with a simple test program:
 
-```
+```C++
 #include <iostream>
 #include <hobbes/net.H>
 
@@ -854,7 +856,7 @@ The hobbes language supports a form of [pattern matching](http://caml.inria.fr/p
 
 An important special case of match expressions are C++ `switch` statements, as the C++ code:
 
-```
+```C++
 switch (x) {
 case 0:  return "foo";
 case 1:  return "bar";
@@ -892,7 +894,7 @@ match x y with
 
 where we'd otherwise have to write a `switch` statement like:
 
-```
+```C++
 switch (x) {
 case 0:
   switch (y) {
@@ -1265,7 +1267,7 @@ This distinction is important because is allows hobbes to derive more efficient 
 
 The C++ interface to hobbes supports the introduction of custom "unqualifiers" (and the system of type classes described earlier is just one such "unqualifier" implementation).  The standard set of unqualifiers is defined in `hobbes/lang/preds/` but it's possible to introduce your own by implementing the `Unqualifier` interface, which allows all of the mechanisms described so far.  This definition is located in `hobbes/lang/tyunqualify.H`:
 
-```
+```C++
 struct Unqualifier {
   // bind any implied type variables in a constraint
   virtual bool refine(const TEnvPtr& tenv, const ConstraintPtr& cst, MonoTypeUnifier* u, Definitions* ds) = 0;

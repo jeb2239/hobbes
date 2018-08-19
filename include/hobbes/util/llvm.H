@@ -4,9 +4,12 @@
 
 #include <hobbes/util/array.H>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 #include <llvm/Config/llvm-config.h>
 
-#if LLVM_VERSION_MAJOR != 3
+#if LLVM_VERSION_MAJOR != 3 && LLVM_VERSION_MAJOR != 4
 #error "I don't know how to use this version of LLVM"
 #endif
 
@@ -24,7 +27,12 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/Signals.h>
+#if LLVM_VERSION_MAJOR == 4
+#include <llvm/Bitcode/BitstreamReader.h>
+#include <llvm/Bitcode/BitstreamWriter.h>
+#else
 #include <llvm/Bitcode/ReaderWriter.h>
+#endif
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/JITEventListener.h>
@@ -33,12 +41,14 @@
 #if LLVM_VERSION_MINOR == 3
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/PassManager.h>
-#elif LLVM_VERSION_MINOR >= 5
+#elif LLVM_VERSION_MINOR >= 5 || LLVM_VERSION_MAJOR == 4
 #include <llvm/IR/Verifier.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Object/ELFObjectFile.h>
 #endif
+
+#pragma GCC diagnostic pop
 
 namespace hobbes {
 
@@ -47,7 +57,8 @@ namespace hobbes {
 //       this is because we have some cases where we partially compile in one thread and then resume compiling in another thread
 //       we currently keep a global lock on compilers anyway
 inline llvm::LLVMContext& context() {
-  return llvm::getGlobalContext();
+  static llvm::LLVMContext ctx;
+  return ctx;
 }
 
 typedef std::vector<llvm::Type*>     Types;
@@ -98,7 +109,7 @@ inline llvm::PointerType* ptrType(llvm::Type* ty) {
 inline llvm::ArrayType* arrayType(llvm::Type* ty, size_t sz) {
   // we can be a little dishonest in describing the type of arrays of unit, since LLVM barfs on arrays of unit
   // and we should never need to look at the "data" in an array of unit values _anyway_!
-  return llvm::ArrayType::get(ty->isVoidTy() ? boolType() : ty, (uint64_t)sz);
+  return llvm::ArrayType::get(ty->isVoidTy() ? boolType() : ty, static_cast<uint64_t>(sz));
 }
 
 inline llvm::StructType* packedRecordType(const Types& tys) {
@@ -193,31 +204,31 @@ inline llvm::Constant* cvalue(double x) {
 
 // constant int utilities (different than constants to LLVM!)
 inline llvm::ConstantInt* civalue(bool x) {
-  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 1), (uint64_t)(x ? 1 : 0));
+  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 1), static_cast<uint64_t>(x ? 1 : 0));
 }
 
 inline llvm::ConstantInt* civalue(char x) {
-  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 8), (uint64_t)x);
+  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 8), static_cast<uint64_t>(x));
 }
 
 inline llvm::ConstantInt* civalue(unsigned char x) {
-  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 8), (uint64_t)x);
+  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 8), static_cast<uint64_t>(x));
 }
 
 inline llvm::ConstantInt* civalue(short x) {
-  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 16), (uint64_t)x);
+  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 16), static_cast<uint64_t>(x));
 }
 
 inline llvm::ConstantInt* civalue(int x) {
-  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 32), (uint64_t)x);
+  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 32), static_cast<uint64_t>(x));
 }
 
 inline llvm::ConstantInt* civalue(unsigned int x) {
-  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 32), (uint64_t)x);
+  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 32), static_cast<uint64_t>(x));
 }
 
 inline llvm::ConstantInt* civalue(long x) {
-  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 64), (uint64_t)x);
+  return llvm::ConstantInt::get(llvm::IntegerType::get(context(), 64), static_cast<uint64_t>(x));
 }
 
 // an intermediate representation for records
@@ -323,10 +334,10 @@ inline llvm::Value* tryMkConstVarArray(llvm::IRBuilder<>* b, llvm::Module* m, ll
   }
 }
 
-inline llvm::Constant* padding(unsigned int len) {
+inline llvm::Constant* padding(size_t len) {
   Constants pad;
-  for (unsigned int i = 0; i < len; ++i) {
-    pad.push_back(cvalue((unsigned char)0));
+  for (size_t i = 0; i < len; ++i) {
+    pad.push_back(cvalue(scast<uint8_t>(0)));
   }
   return llvm::ConstantArray::get(arrayType(byteType(), len), pad);
 }
@@ -340,7 +351,7 @@ inline Constants mergePadding(const Constants& cs, const Record::Members& ms) {
       size_t plen = 0;
       if (FixedArray* fa = is<FixedArray>(m->type)) {
         long asz = fa->requireLength();
-        plen = asz < 0 ? 0 : ((size_t)asz);
+        plen = asz < 0 ? 0 : static_cast<size_t>(asz);
       } else {
         throw std::runtime_error("Cannot derive padding for pad field with non-padding type (internal error)");
       }
@@ -444,14 +455,14 @@ inline llvm::Value* structOffset(llvm::IRBuilder<>* b, llvm::Value* p, unsigned 
 #if LLVM_VERSION_MINOR == 7
   // don't pass nullptr? (http://reviews.llvm.org/rL233938)
   return b->CreateStructGEP(nullptr, p, fieldOffset);
-#elif LLVM_VERSION_MINOR >= 8
-  return b->CreateStructGEP(((llvm::PointerType*)p->getType())->getElementType(), p, fieldOffset);
+#elif LLVM_VERSION_MINOR >= 8 || LLVM_VERSION_MAJOR == 4
+  return b->CreateStructGEP(reinterpret_cast<llvm::PointerType*>(p->getType())->getElementType(), p, fieldOffset);
 #else
   return b->CreateStructGEP(p, fieldOffset);
 #endif
 }
 
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 6 || LLVM_VERSION_MAJOR == 4
 inline llvm::ExecutionEngine* makeExecutionEngine(llvm::Module* m, llvm::SectionMemoryManager* smm) {
   std::string err;
   llvm::ExecutionEngine* ee =
@@ -520,7 +531,7 @@ inline llvm::Function* cloneFunction(llvm::Function *f, llvm::Module *targetMod)
 }
 
 inline llvm::Value* fncall(llvm::IRBuilder<>* b, llvm::Value* vfn, const Values& args) {
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 6 || LLVM_VERSION_MAJOR == 4
   llvm::Module* thisMod = b->GetInsertBlock()->getParent()->getParent();
 
   llvm::Function* fn = llvm::dyn_cast<llvm::Function>(vfn);

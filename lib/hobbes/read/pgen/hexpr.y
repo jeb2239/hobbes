@@ -68,25 +68,6 @@ LexicalAnnotation m(const YYLTYPE& p0, const YYLTYPE& p1) {
   return LexicallyAnnotated::make(Pos(p0.first_line, p0.first_column), Pos(p1.last_line, p1.last_column));
 }
 
-MonoTypePtr forceMonotype(const QualTypePtr& qt, const LexicalAnnotation& la) {
-  MonoTypeUnifier u(yyParseCC->typeEnv());
-  Definitions ds;
-  while (refine(yyParseCC->typeEnv(), qt->constraints(), &u, &ds)) {
-    yyParseCC->drainUnqualifyDefs(ds);
-    ds.clear();
-  }
-  yyParseCC->drainUnqualifyDefs(ds);
-  ds.clear();
-
-  // make sure that the output type exists and is realizable
-  if (hobbes::satisfied(yyParseCC->typeEnv(), qt->constraints(), &ds)) {
-    yyParseCC->drainUnqualifyDefs(ds);
-    return u.substitute(qt->monoType());
-  } else {
-    throw annotated_error(la, "Cannot resolve qualifications in type");
-  }
-}
-
 #define TAPP0(fn,la)          new App(fn, list<ExprPtr>(), la)
 #define TAPP1(fn,x0,la)       new App(fn, list(ExprPtr(x0)), la)
 #define TAPP2(fn,x0,x1,la)    new App(fn, list(ExprPtr(x0),ExprPtr(x1)), la)
@@ -99,7 +80,7 @@ Expr* pickNestedExp(Exprs* exprs, const LexicalAnnotation& la) {
     return (*exprs)[0]->clone();
   } else {
     MkRecord::FieldDefs fds;
-    for (int i = 0; i < exprs->size(); ++i) {
+    for (size_t i = 0; i < exprs->size(); ++i) {
       fds.push_back(MkRecord::FieldDef(".f" + str::from(i), (*exprs)[i]));
     }
     return new MkRecord(fds, la);
@@ -111,7 +92,7 @@ Pattern* pickNestedPat(Patterns* pats, const LexicalAnnotation& la) {
     return new MatchLiteral(PrimitivePtr(new Unit(la)), la);
   } else {
     MatchRecord::Fields fds;
-    for (int i = 0; i < pats->size(); ++i) {
+    for (size_t i = 0; i < pats->size(); ++i) {
       fds.push_back(MatchRecord::Field(".f" + str::from(i), (*pats)[i]));
     }
     return new MatchRecord(fds, la);
@@ -218,7 +199,7 @@ Expr* makeProjSeq(Expr* rec, const str::seq& fields, const LexicalAnnotation& la
 
 MonoTypePtr monoTypeByName(const std::string& tn) {
   if (isPrimName(tn) || yyParseCC->isTypeAliasName(tn)) {
-    return Prim::make(tn);
+    return yyParseCC->replaceTypeAliases(Prim::make(tn));
   } else if (yyParseCC->isTypeName(tn)) {
     return Prim::make(tn, yyParseCC->namedTypeRepresentation(tn));
   } else {
@@ -487,6 +468,9 @@ extern PatVarCtorFn patVarCtorFn;
 %type <mtypes>       ltmtype l1mtargl l0mtargl l0mtarglt
 
 /* associativity to give expected operator precedence */
+%right "else"
+%right "in"
+%right "->"
 %left "!"
 %left "."
 %left "++" "+" "-"
@@ -495,8 +479,6 @@ extern PatVarCtorFn patVarCtorFn;
 %left "and" "or"
 %left "o"
 %right "@"
-%right "->"
-%right "in" "else"
 %right "::"
 
 %start s
@@ -542,8 +524,8 @@ def: importdef { $$ = $1; }
 importdef: "import" cppid { $$ = new MImport(yyModulePath, *$2, m(@1, @2)); }
 
 /* abbreviate type names */
-tydef: "type" nameseq "=" qtype { MTypeDef* td = new MTypeDef(MTypeDef::Transparent, hobbes::select(*$2, 0), hobbes::select(*$2, 1, (int)$2->size()), forceMonotype(QualTypePtr($4), m(@4)), m(@1, @4)); yyParseCC->defineTypeAlias(td->name(), td->arguments(), td->type()); $$ = td; }
-     | "data" nameseq "=" qtype { MTypeDef* td = new MTypeDef(MTypeDef::Opaque, hobbes::select(*$2, 0), hobbes::select(*$2, 1, (int)$2->size()), forceMonotype(QualTypePtr($4), m(@4)), m(@1, @4)); yyParseCC->defineNamedType(td->name(), td->arguments(), td->type()); $$ = td; }
+tydef: "type" nameseq "=" qtype { $$ = new MTypeDef(MTypeDef::Transparent, hobbes::select(*$2, 0), hobbes::select(*$2, 1, (int)$2->size()), QualTypePtr($4), m(@1, @4)); }
+     | "data" nameseq "=" qtype { $$ = new MTypeDef(MTypeDef::Opaque, hobbes::select(*$2, 0), hobbes::select(*$2, 1, (int)$2->size()), QualTypePtr($4), m(@1, @4)); }
 
 /* variable bindings by type and expression */
 vartybind: name "::" qtype { $$ = new MVarTypeDef(*$1, QualTypePtr($3), m(@1, @3)); }
@@ -625,32 +607,35 @@ l0expr: "\\" patterns "." l0expr { $$ = makePatternFn(*$2, ExprPtr($4), m(@1, @4
       | l0expr "and" l0expr      { $$ = TAPP2(var("and",m(@2)), $1, $3, m(@1,@3)); }
       | l0expr "or"  l0expr      { $$ = TAPP2(var("or",m(@2)),  $1, $3, m(@1,@3)); }
       | l0expr "o"   l0expr      { $$ = TAPP2(var("compose",m(@2)), $1, $3, m(@1,@3)); }
+      | l1expr "<-"  l1expr      { $$ = new Assign(ExprPtr($1), ExprPtr($3), m(@1, @3)); }
+      | l1expr "in"  l1expr      { $$ = TAPP2(var("in",m(@2)), $1, $3, m(@1,@3)); }
       | l1expr                   { $$ = $1; }
 
-l1expr: l1expr "~"   l1expr { $$ = TAPP2(var("~",m(@2)), $1, $3, m(@1,@3)); }
-      | l1expr "===" l1expr { $$ = TAPP2(var("===",m(@2)), $1, $3, m(@1,@3)); }
-      | l1expr "=="  l1expr { $$ = TAPP2(var("==",m(@2)), $1, $3, m(@1,@3)); }
-      | l1expr "!="  l1expr { $$ = TAPP1(var("not",m(@2)), TAPP2(var("==",m(@2)), $1, $3, m(@1,@3)), m(@1,@3)); }
-      | l1expr "<"   l1expr { $$ = TAPP2(var("<",m(@2)),  $1, $3, m(@1,@3)); }
-      | l1expr "<="  l1expr { $$ = TAPP2(var("<=",m(@2)), $1, $3, m(@1,@3)); }
-      | l1expr ">"   l1expr { $$ = TAPP2(var(">",m(@2)),  $1, $3, m(@1,@3)); }
-      | l1expr ">="  l1expr { $$ = TAPP2(var(">=",m(@2)), $1, $3, m(@1,@3)); }
-      | l1expr "in"  l1expr { $$ = TAPP2(var("in",m(@2)), $1, $3, m(@1,@3)); }
-      | l2expr              { $$ = $1; }
+l1expr: "if" l0expr "then" l0expr "else" l0expr { $$ = TAPP3(var("if",m(@1)), $2, $4, $6, m(@1, @6)); }
+      | l2expr                                  { $$ = $1; }
 
-l2expr: l2expr "+" l2expr  { $$ = TAPP2(var("+",m(@2)), $1, $3, m(@1,@3)); }
-      | l2expr "-" l2expr  { $$ = TAPP2(var("-",m(@2)), $1, $3, m(@1,@3)); }
-      | l2expr "++" l2expr { $$ = TAPP2(var("append",m(@2)), $1, $3, m(@1,@3)); }
-      | "-" l2expr         { $$ = TAPP1(var("neg",m(@1)), ExprPtr($2), m(@1,@2)); }
-      | l3expr             { $$ = $1; }
+l2expr: l2expr "~"   l2expr { $$ = TAPP2(var("~",m(@2)), $1, $3, m(@1,@3)); }
+      | l2expr "===" l2expr { $$ = TAPP2(var("===",m(@2)), $1, $3, m(@1,@3)); }
+      | l2expr "=="  l2expr { $$ = TAPP2(var("==",m(@2)), $1, $3, m(@1,@3)); }
+      | l2expr "!="  l2expr { $$ = TAPP1(var("not",m(@2)), TAPP2(var("==",m(@2)), $1, $3, m(@1,@3)), m(@1,@3)); }
+      | l2expr "<"   l2expr { $$ = TAPP2(var("<",m(@2)),  $1, $3, m(@1,@3)); }
+      | l2expr "<="  l2expr { $$ = TAPP2(var("<=",m(@2)), $1, $3, m(@1,@3)); }
+      | l2expr ">"   l2expr { $$ = TAPP2(var(">",m(@2)),  $1, $3, m(@1,@3)); }
+      | l2expr ">="  l2expr { $$ = TAPP2(var(">=",m(@2)), $1, $3, m(@1,@3)); }
+      | l3expr              { $$ = $1; }
 
-l3expr: l3expr "*" l3expr { $$ = TAPP2(var("*", m(@2)), $1, $3, m(@1, @3)); }
-      | l3expr "/" l3expr { $$ = TAPP2(var("/", m(@2)), $1, $3, m(@1, @3)); }
-      | l3expr "%" l3expr { $$ = TAPP2(var("%", m(@2)), $1, $3, m(@1, @3)); }
-      | l4expr            { $$ = $1; }
+l3expr: l3expr "+"  l3expr { $$ = TAPP2(var("+",m(@2)), $1, $3, m(@1,@3)); }
+      | l3expr "-"  l3expr { $$ = TAPP2(var("-",m(@2)), $1, $3, m(@1,@3)); }
+      | l3expr "++" l3expr { $$ = TAPP2(var("append",m(@2)), $1, $3, m(@1,@3)); }
+      | "-" l3expr         { $$ = TAPP1(var("neg",m(@1)), ExprPtr($2), m(@1,@2)); }
+      | l4expr             { $$ = $1; }
 
-l4expr: "if" l4expr "then" l4expr "else" l4expr { $$ = TAPP3(var("if",m(@1)), $2, $4, $6, m(@1, @6)); }
-      | l5expr                                  { $$ = $1; }
+l4expr: l4expr "*" l4expr { $$ = TAPP2(var("*", m(@2)), $1, $3, m(@1, @3)); }
+      | l4expr "/" l4expr { $$ = TAPP2(var("/", m(@2)), $1, $3, m(@1, @3)); }
+      | l4expr "%" l4expr { $$ = TAPP2(var("%", m(@2)), $1, $3, m(@1, @3)); }
+      | l5expr            { $$ = $1; }
+
+l5expr: l6expr { $$ = $1; }
 
       /* local variable introduction */
       | "let" letbindings "in" l0expr { $$ = compileNestedLetMatch(*$2, ExprPtr($4), m(@1,@4))->clone(); }
@@ -660,7 +645,7 @@ l4expr: "if" l4expr "then" l4expr "else" l4expr { $$ = TAPP3(var("if",m(@1)), $2
       | "match" l6exprs "with" patternexps { $$ = compileMatch(yyParseCC, *$2, normPatternRules(*$4, m(@1,@4)), m(@1,@4))->clone(); }
 
       /* match test */
-      | l5expr "matches" pattern { $$ = compileMatchTest(yyParseCC, ExprPtr($1), PatternPtr($3), m(@1,@3))->clone(); }
+      | l6expr "matches" pattern { $$ = compileMatchTest(yyParseCC, ExprPtr($1), PatternPtr($3), m(@1,@3))->clone(); }
 
       /* parser generation */
       | "parse" "{" prules "}" {
@@ -679,12 +664,12 @@ l4expr: "if" l4expr "then" l4expr "else" l4expr { $$ = TAPP3(var("if",m(@1)), $2
       | "do" "{" dobindings "return" l0expr "}" { $$ = compileNestedLetMatch(*$3, ExprPtr($5), m(@1,@6)); }
 
       /* forced type assignment */
-      | l5expr "::" qtype       { $$ = new Assump(ExprPtr($1), QualTypePtr($3), m(@1,@3)); }
+      | l6expr "::" qtype       { $$ = new Assump(ExprPtr($1), QualTypePtr($3), m(@1,@3)); }
 
 letbindings: letbindings ";" letbinding { $1->push_back(*$3); $$ = $1; }
            | letbinding                 { $$ = autorelease(new LetBindings()); $$->push_back(*$1); }
 
-letbinding: irrefutablep "=" l2expr { $$ = autorelease(new LetBinding(PatternPtr($1), ExprPtr($3))); }
+letbinding: irrefutablep "=" l1expr { $$ = autorelease(new LetBinding(PatternPtr($1), ExprPtr($3))); }
 
 dobindings: dobindings dobinding { $$ = $1; $$->push_back(*$2); }
           | dobinding            { $$ = autorelease(new LetBindings()); $$->push_back(*$1); }
@@ -693,9 +678,6 @@ dobinding: irrefutablep "=" l0expr ";" { $$ = autorelease(new LetBinding(Pattern
          | l0expr ";"                  { $$ = autorelease(new LetBinding(PatternPtr(new MatchAny("_",m(@1))), ExprPtr($1))); }
 
 /* assignment */
-l5expr: l6expr "<-" l6expr { $$ = new Assign(ExprPtr($1), ExprPtr($3), m(@1, @3)); }
-      | l6expr             { $$ = $1; }
-
 l6expr: l6expr "(" cargs ")"    { $$ = new App(ExprPtr($1), *$3, m(@1, @4)); }
       | id                      { $$ = varCtorFn(*$1, m(@1)); }
 
@@ -718,8 +700,9 @@ l6expr: l6expr "(" cargs ")"    { $$ = new App(ExprPtr($1), *$3, m(@1, @4)); }
       | "case" l0expr "of" "|" varfields "|" "default" l0expr { $$ = new Case(ExprPtr($2), *$5, ExprPtr($8), m(@1, @8)); }
 
       /* record construction / elimination */
-      | "{" recfields "}"   { if ($2->size() > 0) { $$ = new MkRecord(*$2, m(@1, @3)); } else { $$ = new Unit(m(@1, @3)); } }
-      | l6expr recfieldpath { $$ = makeProjSeq($1, *$2, m(@1, @2)); }
+      | "{" recfields "}"     { if ($2->size() > 0) { $$ = new MkRecord(*$2, m(@1, @3)); } else { $$ = new Unit(m(@1, @3)); } }
+      | "{" recfields "," "}" { if ($2->size() > 0) { $$ = new MkRecord(*$2, m(@1, @4)); } else { $$ = new Unit(m(@1, @4)); } }
+      | l6expr recfieldpath   { $$ = makeProjSeq($1, *$2, m(@1, @2)); }
 
       /* record sections */
       | recfieldpath { $$ = new Fn(str::strings("x"), proj(var("x", m(@1)), *$1, m(@1)), m(@1)); }
@@ -819,16 +802,21 @@ refutablep: "boolV"                    { $$ = new MatchLiteral(PrimitivePtr(new 
           | "dateTimeV"                { $$ = new MatchLiteral(mkDateTimePrim(*$1, m(@1)), mkDateTimeExpr(*$1, m(@1)), m(@1)); }
           | "regexV"                   { $$ = new MatchRegex(std::string($1->begin() + 1, $1->end() - 1), m(@1)); }
           | "[" patternseq "]"         { $$ = new MatchArray(*$2, m(@1,@3)); }
+          | "[" patternseq "," "]"     { $$ = new MatchArray(*$2, m(@1,@4)); }
           | "|" id "|"                 { $$ = new MatchVariant(*$2, PatternPtr(new MatchLiteral(PrimitivePtr(new Unit(m(@2))), m(@2))), m(@1,@3)); }
           | "|" id "=" pattern "|"     { $$ = new MatchVariant(*$2, PatternPtr($4), m(@1,@5)); }
           | "|" "intV" "=" pattern "|" { $$ = new MatchVariant(".f" + str::from($2), PatternPtr($4), m(@1,@5)); }
           | "(" patternseq ")"         { $$ = pickNestedPat($2, m(@1,@3)); }
+          | "(" patternseq "," ")"     { $$ = pickNestedPat($2, m(@1,@4)); }
           | "{" recpatfields "}"       { $$ = new MatchRecord(*$2, m(@1,@3)); }
+          | "{" recpatfields "," "}"   { $$ = new MatchRecord(*$2, m(@1,@4)); }
           | id                         { $$ = patVarCtorFn(*$1, m(@1)); }
 
-irrefutablep: id                   { $$ = new MatchAny(*$1, m(@1)); }
-            | "(" patternseq ")"   { $$ = pickNestedPat($2, m(@1,@3)); }
-            | "{" recpatfields "}" { $$ = new MatchRecord(*$2, m(@1,@3)); }
+irrefutablep: id                       { $$ = new MatchAny(*$1, m(@1)); }
+            | "(" patternseq ")"       { $$ = pickNestedPat($2, m(@1,@3)); }
+            | "(" patternseq "," ")"   { $$ = pickNestedPat($2, m(@1,@4)); }
+            | "{" recpatfields "}"     { $$ = new MatchRecord(*$2, m(@1,@3)); }
+            | "{" recpatfields "," "}" { $$ = new MatchRecord(*$2, m(@1,@4)); }
 
 pattern: refutablep { $$ = $1; }
 
@@ -917,7 +905,7 @@ l1mtargl: l1mtype          { $$ = autorelease(new MonoTypes()); $$->push_back(*$
 ltmtype : ltmtype l0mtype { $$ = $1; $$->push_back(*$2); }
         | l0mtype         { $$ = autorelease(new MonoTypes()); $$->push_back(*$1); }
 
-l0mtype: l0mtargl "->" l1mtype { $$ = autorelease(new MonoTypePtr(Func::make(tuple(*$1), *$3))); }
+l0mtype: l0mtargl "->" l1mtype { $$ = autorelease(new MonoTypePtr(Func::make(tuplety(*$1), *$3))); }
        | mtuplist              { $$ = autorelease(new MonoTypePtr(makeTupleType(*$1))); }
        | msumlist              { $$ = autorelease(new MonoTypePtr(makeSumType(*$1))); }
 

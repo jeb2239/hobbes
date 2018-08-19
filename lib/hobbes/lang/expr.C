@@ -1,5 +1,6 @@
 
 #include <hobbes/lang/expr.H>
+#include <hobbes/lang/preds/class.H>
 #include <hobbes/util/array.H>
 #include <hobbes/util/time.H>
 #include <hobbes/util/codec.H>
@@ -253,7 +254,7 @@ void Fn::show(std::ostream& out) const {
   out << "\\(";
   if (this->vs[0] != "_") {
     out << this->vs[0];
-    for (int i = 1; i < this->vs.size(); ++i) {
+    for (size_t i = 1; i < this->vs.size(); ++i) {
       out << ", ";
       out << this->vs[i];
     }
@@ -266,7 +267,7 @@ void Fn::showAnnotated(std::ostream& out) const {
   out << "(\\(";
   if (this->vs[0] != "_") {
     out << this->vs[0];
-    for (int i = 1; i < this->vs.size(); ++i) {
+    for (size_t i = 1; i < this->vs.size(); ++i) {
       out << ", ";
       out << this->vs[i];
     }
@@ -389,7 +390,7 @@ void MkArray::show(std::ostream& out) const {
   out << "[";
   if (this->es.size() > 0) {
     this->es[0]->show(out);
-    for (int i = 1; i < this->es.size(); ++i) {
+    for (size_t i = 1; i < this->es.size(); ++i) {
       out << ", ";
       this->es[i]->show(out);
     }
@@ -400,7 +401,7 @@ void MkArray::showAnnotated(std::ostream& out) const {
   out << "[";
   if (this->es.size() > 0) {
     this->es[0]->showAnnotated(out);
-    for (int i = 1; i < this->es.size(); ++i) {
+    for (size_t i = 1; i < this->es.size(); ++i) {
       out << ", ";
       this->es[i]->showAnnotated(out);
     }
@@ -469,7 +470,7 @@ void MkRecord::showRecord(std::ostream& out) const {
   out << "{";
   if (this->fs.size() > 0) {
     out << this->fs[0].first << " = "; this->fs[0].second->show(out);
-    for (int i = 1; i < this->fs.size(); ++i) {
+    for (size_t i = 1; i < this->fs.size(); ++i) {
       out << ", " << this->fs[i].first << " = "; this->fs[i].second->show(out);
     }
   }
@@ -479,7 +480,7 @@ void MkRecord::showRecordAnnotated(std::ostream& out) const {
   out << "{";
   if (this->fs.size() > 0) {
     out << this->fs[0].first << " = "; this->fs[0].second->showAnnotated(out);
-    for (int i = 1; i < this->fs.size(); ++i) {
+    for (size_t i = 1; i < this->fs.size(); ++i) {
       out << ", " << this->fs[i].first << " = "; this->fs[i].second->showAnnotated(out);
     }
   }
@@ -489,7 +490,7 @@ void MkRecord::showRecordAnnotated(std::ostream& out) const {
 void MkRecord::showTuple(std::ostream& out) const {
   out << "(";
   this->fs[0].second->show(out);
-  for (int i = 1; i < this->fs.size(); ++i) {
+  for (size_t i = 1; i < this->fs.size(); ++i) {
     out << ", ";
     this->fs[i].second->show(out);
   }
@@ -498,7 +499,7 @@ void MkRecord::showTuple(std::ostream& out) const {
 void MkRecord::showTupleAnnotated(std::ostream& out) const {
   out << "(";
   this->fs[0].second->showAnnotated(out);
-  for (int i = 1; i < this->fs.size(); ++i) {
+  for (size_t i = 1; i < this->fs.size(); ++i) {
     out << ", ";
     this->fs[i].second->showAnnotated(out);
   }
@@ -709,7 +710,7 @@ Expr* Switch::clone() const {
   ExprPtr cdef = this->def ? ExprPtr(this->def->clone()) : ExprPtr();
   Bindings cbs;
   for (auto b : this->bs) {
-    cbs.push_back(Binding(PrimitivePtr((Primitive*)b.value->clone()), ExprPtr(b.exp->clone())));
+    cbs.push_back(Binding(PrimitivePtr(reinterpret_cast<Primitive*>(b.value->clone())), ExprPtr(b.exp->clone())));
   }
   return new Switch(ExprPtr(this->v->clone()), cbs, cdef, la());
 }
@@ -1218,13 +1219,13 @@ struct liftTypeAsAssumpF : public switchExprTyFn {
   }
 };
 
-const MonoTypePtr& requireMonotype(const ExprPtr& e) {
+const MonoTypePtr& requireMonotype(const TEnvPtr& tenv, const ExprPtr& e) {
   if (e->type() == QualTypePtr()) {
     throw annotated_error(*e, "Expression '" + show(e) + "' not explicitly annotated.  Internal compiler error.");
   }
 
   if (e->type()->constraints().size() > 0) {
-    Constraints cs = simplifyVarNames(e->type())->constraints();
+    Constraints cs = expandHiddenTCs(tenv, simplifyVarNames(e->type())->constraints());
     std::ostringstream ss;
     ss << "Failed to compile expression due to unresolved type constraint" << (cs.size() > 1 ? "s" : "") << ":";
     for (const auto& c : cs) {
@@ -1236,10 +1237,10 @@ const MonoTypePtr& requireMonotype(const ExprPtr& e) {
   return e->type()->monoType();
 }
 
-MonoTypes requireMonotype(const Exprs& es) {
+MonoTypes requireMonotype(const TEnvPtr& tenv, const Exprs& es) {
   MonoTypes r;
   for (auto e : es) {
-    r.push_back(requireMonotype(e));
+    r.push_back(requireMonotype(tenv, e));
   }
   return r;
 }
@@ -1672,11 +1673,11 @@ struct encodeExprF : public switchExpr<UnitV> {
 };
 
 void encode(const PrimitivePtr& p, std::ostream& out) {
-  encode((const ExprPtr&)p, out);
+  encode(reinterpret_cast<const ExprPtr&>(p), out);
 }
 
 void decode(PrimitivePtr* p, std::istream& in) {
-  decode((ExprPtr*)p, in);
+  decode(reinterpret_cast<ExprPtr*>(p), in);
 }
 
 void encode(const ExprPtr& e, std::ostream& out) {

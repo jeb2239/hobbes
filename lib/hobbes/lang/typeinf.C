@@ -612,7 +612,7 @@ struct expTypeInfF : public switchExprM<UnitV> {
     MonoTypes argl = freshTypeVars(v->varNames().size());
     switchOf(v->body(), expTypeInfF(fnFrame(this->tenv, v->varNames(), argl), this->u, this->ds));
 
-    v->type(qt(v->body()->type()->constraints(), MonoTypePtr(Func::make(tuple(argl), v->body()->type()->monoType()))));
+    v->type(qt(v->body()->type()->constraints(), MonoTypePtr(Func::make(tuplety(argl), v->body()->type()->monoType()))));
     return unitv;
   }
 
@@ -712,8 +712,13 @@ struct expTypeInfF : public switchExprM<UnitV> {
 
   UnitV with(MkRecord* v) {
     QualTypes ftys;
+    str::set fnames;
 
     for (MkRecord::FieldDefs::const_iterator f = v->fields().begin(); f != v->fields().end(); ++f) {
+      if (!fnames.insert(f->first).second) {
+        throw annotated_error(*v, "Duplicate field name introduction: " + f->first);
+      }
+
       switchOf(f->second, *this);
       ftys.push_back(f->second->type());
     }
@@ -986,7 +991,7 @@ void mgu(const MonoTypePtr& t0, const MonoTypePtr& t1, MonoTypeUnifier* u) {
 
 void mgu(const MonoTypes& t0s, const MonoTypes& t1s, MonoTypeUnifier* u) {
   if (t0s.size() == t1s.size()) {
-    for (int i = 0; i < t0s.size(); ++i) {
+    for (size_t i = 0; i < t0s.size(); ++i) {
       mgu(t0s[i], t1s[i], u);
     }
   } else {

@@ -32,9 +32,10 @@ struct op {
 // a JIT compiler for monotyped expressions
 class jitcc {
 public:
-  jitcc();
+  jitcc(const TEnvPtr&);
   ~jitcc();
 
+  const TEnvPtr&     typeEnv() const;
   llvm::IRBuilder<>* builder() const;
   llvm::Module*      module();
 
@@ -107,7 +108,12 @@ public:
 
   // inline all global definitions within an expression
   ExprPtr inlineGlobals(const ExprPtr&);
+
+  // allocate some global data attached to this JIT
+  void* memalloc(size_t);
 private:
+  TEnvPtr tenv;
+
   // produce some machine code for a compiled function
   void* getMachineCode(llvm::Function*, llvm::JITEventListener* listener = 0);
 
@@ -120,7 +126,7 @@ private:
   typedef std::vector<llvm::Module*> Modules;
   Modules modules;
 
-#if LLVM_VERSION_MINOR == 6 || LLVM_VERSION_MINOR == 7 || LLVM_VERSION_MINOR == 8
+#if LLVM_VERSION_MINOR == 6 || LLVM_VERSION_MINOR == 7 || LLVM_VERSION_MINOR == 8 || LLVM_VERSION_MAJOR == 4
   llvm::legacy::PassManager* mpm;
 
   // the set of allocated execution engines (each will own a finalized module from the set of modules)

@@ -9,18 +9,17 @@
 #include <mutex>
 
 #include "session.H"
-#include "netio.H"
 
 namespace hog {
 
-void recordLocalData(const hobbes::storage::QueueConnection& qc, const std::string& dir) {
+void recordLocalData(SessionGroup* sg, const hobbes::storage::QueueConnection& qc, const std::string& dir, const hobbes::storage::WaitPolicy wp) {
   using namespace hobbes;
 
-  Session sn;
   storage::runReadProcess(
     qc,
+    wp,
     [&](storage::PipeQOS qos, storage::CommitMethod cm, const storage::statements& ss) {
-      return initStorageSession(&sn, dir, qos, cm, ss);
+      return appendStorageSession(sg, dir, qos, cm, ss);
     }
   );
 }

@@ -3,6 +3,7 @@
 #include <hobbes/ipc/net.H>
 #include <hobbes/util/array.H>
 #include <hobbes/util/str.H>
+#include <hobbes/util/os.H>
 
 #include <iostream>
 #include <fstream>
@@ -124,9 +125,9 @@ void showShellHelp(const CmdDescs& cds) {
             << std::string(2 + llen + 2, '=')
             << std::endl;
 
-  double hw  = ((double)(llen - header.size())) / 2.0;
-  size_t lhw = (size_t)floor(hw);
-  size_t rhw = (size_t)ceil(hw);
+  double hw  = static_cast<double>(llen - header.size()) / 2.0;
+  size_t lhw = static_cast<size_t>(floor(hw));
+  size_t rhw = static_cast<size_t>(ceil(hw));
 
   std::cout << "| "
               << std::string(lhw, ' ')
@@ -150,20 +151,21 @@ void showShellHelp(const CmdDescs& cds) {
 
 void showShellHelp() {
   CmdDescs cds;
-  cds.push_back(CmdDesc(":h",   "Show this help"));
-  cds.push_back(CmdDesc(":q",   "Quit the hi shell"));
-  cds.push_back(CmdDesc(":a",   "Print the active LLVM module"));
-  cds.push_back(CmdDesc(":t",   "Print all global variable::type bindings"));
-  cds.push_back(CmdDesc(":d S", "Print the docs for a symbol"));
-  cds.push_back(CmdDesc(":t E", "Show the type of the expression E"));
-  cds.push_back(CmdDesc(":p E", "Show the type of E with hidden type classes left intact"));
-  cds.push_back(CmdDesc(":l F", "Load the hobbes script or image file F"));
-  cds.push_back(CmdDesc(":u E", "Show the 'unsweeten' transform of E"));
-  cds.push_back(CmdDesc(":x E", "Show the x86 assembly code produced by compiling E"));
-  cds.push_back(CmdDesc(":e E", "Find the average run-time of E (in CPU cycles)"));
-  cds.push_back(CmdDesc(":z E", "Evaluate E and show a breakdown of compilation/evaluation time"));
-  cds.push_back(CmdDesc(":c N", "Describe the type class named N"));
-  cds.push_back(CmdDesc(":i N", "Show instances and instance generators for the type class N"));
+  cds.push_back(CmdDesc(":h",     "Show this help"));
+  cds.push_back(CmdDesc(":q",     "Quit the hi shell"));
+  cds.push_back(CmdDesc(":s E T", "Search for paths from the expression E to the type T"));
+  cds.push_back(CmdDesc(":a",     "Print the active LLVM module"));
+  cds.push_back(CmdDesc(":t",     "Print all global variable::type bindings"));
+  cds.push_back(CmdDesc(":d S",   "Print the docs for a symbol"));
+  cds.push_back(CmdDesc(":t E",   "Show the type of the expression E"));
+  cds.push_back(CmdDesc(":p E",   "Show the type of E with hidden type classes left intact"));
+  cds.push_back(CmdDesc(":l F",   "Load the hobbes script or image file F"));
+  cds.push_back(CmdDesc(":u E",   "Show the 'unsweeten' transform of E"));
+  cds.push_back(CmdDesc(":x E",   "Show the x86 assembly code produced by compiling E"));
+  cds.push_back(CmdDesc(":e E",   "Find the average run-time of E (in CPU cycles)"));
+  cds.push_back(CmdDesc(":z E",   "Evaluate E and show a breakdown of compilation/evaluation time"));
+  cds.push_back(CmdDesc(":c N",   "Describe the type class named N"));
+  cds.push_back(CmdDesc(":i N",   "Show instances and instance generators for the type class N"));
   showShellHelp(cds);
 }
 
@@ -181,7 +183,7 @@ evaluator* eval = 0;
 str::seq completionMatches;
 
 char* completionStep(const char* pfx, int state) {
-  if (state < completionMatches.size()) {
+  if (state >= 0 && size_t(state) < completionMatches.size()) {
     return strdup(completionMatches[state].c_str());
   } else {
     return 0;
@@ -191,9 +193,9 @@ char* completionStep(const char* pfx, int state) {
 char** completions(const char* pfx, int start, int end) {
   if (start == 0) {
     completionMatches = eval->completionsFor(pfx);
-    return rl_completion_matches((char*)pfx, &completionStep);
+    return rl_completion_matches(const_cast<char*>(pfx), &completionStep);
   } else {
-#if BUILD_LINUX
+#ifdef BUILD_LINUX
     rl_bind_key('\t', rl_abort);
 #endif
     return 0;
@@ -277,23 +279,19 @@ void evalLine(char* x) {
     }
 
     // should we do something other than evaluate the input expression?
-    enum EvMode { Eval, ShowASM, Typeof, PuglyTypeof, Unsweeten, PerfTest, BreakdownEval };
+    enum EvMode { Eval, ShowASM, Typeof, PuglyTypeof, Unsweeten, PerfTest, BreakdownEval, SearchDefs };
     EvMode em = Eval;
 
     if (line.size() > 3 && line[0] == ':') {
-      if (line[1] == 'x') {
-        em = ShowASM;
-      } else if (line[1] == 't') {
-        em = Typeof;
-      } else if (line[1] == 'p') {
-        em = PuglyTypeof;
-      } else if (line[1] == 'u') {
-        em = Unsweeten;
-      } else if (line[1] == 'e') {
-        em = PerfTest;
-      } else if (line[1] == 'z') {
-        em = BreakdownEval;
-      } else {
+      switch (line[1]) {
+      case 'x': em = ShowASM;       break;
+      case 't': em = Typeof;        break;
+      case 'p': em = PuglyTypeof;   break;
+      case 'u': em = Unsweeten;     break;
+      case 'e': em = PerfTest;      break;
+      case 'z': em = BreakdownEval; break;
+      case 's': em = SearchDefs;    break;
+      default:
         throw std::runtime_error("Unrecognized command: " + line);
       }
       line = line.substr(3);
@@ -327,6 +325,9 @@ void evalLine(char* x) {
     case BreakdownEval:
       eval->breakdownEvalExpr(line);
       break;
+    case SearchDefs:
+      eval->searchDefs(line);
+      break;
     }
 
     eval->resetREPLCycle();
@@ -343,7 +344,7 @@ void runProcess(const std::string&, std::ostream&);
 
 unsigned int digitLen(unsigned int x) {
   static double log10 = log(10.0);
-  return (unsigned int)floor(log((double)x) / log10);
+  return static_cast<unsigned int>(floor(log(static_cast<double>(x)) / log10));
 }
 
 template <typename C>
@@ -387,7 +388,7 @@ void printASMTable(const str::seq& insts, const str::seqs& args, unsigned int ma
   unsigned int mc = digitLen(insts.size());
   unsigned int mn = str::maxSize(0, insts);
 
-  std::cout << resetfmt() << setbold();
+  std::cout << resetfmt();
 
   for (unsigned int i = 0; i < std::min<size_t>(insts.size(), args.size()); ++i) {
     if ((i % 2) == 0) {
@@ -397,7 +398,8 @@ void printASMTable(const str::seq& insts, const str::seqs& args, unsigned int ma
     }
 
     // show the line number
-    std::cout << std::string(mc - digitLen(i), ' ')
+    std::cout << setbold()
+              << std::string(mc - digitLen(i), ' ')
               << setfgc(colors.linenumfg) << i << setfgc(colors.linenumdelimfg) << ": ";
 
     // show the instruction
@@ -414,7 +416,7 @@ void printASMTable(const str::seq& insts, const str::seqs& args, unsigned int ma
     }
 
     // next
-    std::cout << std::string(maxlen - fmtLen(argl), ' ') << std::endl;
+    std::cout << std::string(maxlen - fmtLen(argl), ' ') << resetfmt() << std::endl;
   }
 
   std::cout << resetfmt();
@@ -423,7 +425,11 @@ void printASMTable(const str::seq& insts, const str::seqs& args, unsigned int ma
 void printASM(void* p, size_t len) {
   std::string fn = saveData(p, len);
   std::ostringstream ss;
+#ifdef BUILD_LINUX
   runProcess("objdump -D -b binary -m i386 -M intel-mnemonic -M x86-64 --no-show-raw-insn \"" + fn + "\"", ss);
+#else
+  runProcess("ndisasm -u \"" + fn + "\"", ss);
+#endif
   unlink(fn.c_str());
 
   std::istringstream in(ss.str());
@@ -435,12 +441,19 @@ void printASM(void* p, size_t len) {
 
   while (std::getline(in, mline)) {
     ++li;
+#ifdef BUILD_LINUX
     // ignore the objdump output header
     if (li >= 8) {
       str::pair i = str::lsplit(mline, ":");
       str::pair x = str::lsplit(i.second, " ");
       insts.push_back(str::trim(x.first));
       args.push_back(str::csplit(str::trim(x.second), ","));
+#else
+    {
+      str::pair xinst = str::lsplit(str::trim(str::lsplit(mline.substr(10), " ").second), " ");
+      insts.push_back(str::trim(xinst.first));
+      args.push_back(str::csplit(str::trim(xinst.second), ","));
+#endif
 
       maxlen = std::max<unsigned int>(maxlen, fmtLen(args.back()));
     }
@@ -455,7 +468,7 @@ std::string saveData(void* d, size_t sz) {
   if (!f.is_open()) {
     throw std::runtime_error("Failed to open '" + rn + "' for writing.");
   }
-  f.write((const char*)d, sz);
+  f.write(reinterpret_cast<const char*>(d), sz);
   f.close();
   return rn;
 }
@@ -620,12 +633,13 @@ int main(int argc, char** argv) {
     } else if (!args.exitAfterEval) {
       repl(&eval);
     }
+    std::cout << resetfmt();
     return 0;
   } catch (hobbes::annotated_error& ae) {
     printAnnotatedError(ae);
     return -1;
   } catch (std::exception& ex) {
-    std::cout << "Fatal error: " << ex.what() << std::endl;
+    std::cout << "Fatal error: " << ex.what() << resetfmt() << std::endl;
     return -1;
   }
 }

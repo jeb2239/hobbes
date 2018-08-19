@@ -38,7 +38,7 @@ public:
 
 class Bottom : public Left, public Right {
 public:
-  Bottom(int x, double y, int z) : Left(x*z, y*y, z*x), Right(x*x, y*y, z*z), Top(x, y, z) { }
+  Bottom(int x, double y, int z) : Top(x, y, z), Left(x*z, y*y, z*x), Right(x*x, y*y, z*z) { }
 
   int foo(int,double,char) { return 30; }
   int zzz()                { return 3333; }
@@ -53,10 +53,10 @@ public:
 };
 
 array<ArrObjV*>* arrobjs(int n) {
-  array<ArrObjV*>* r = (array<ArrObjV*>*)memalloc(sizeof(long) + sizeof(ArrObjV) * n);
+  array<ArrObjV*>* r = reinterpret_cast<array<ArrObjV*>*>(memalloc(sizeof(long) + sizeof(ArrObjV) * n));
   r->size = n;
   for (int i = 0; i < n; ++i) {
-    new ((ArrObjV*)(r->data + n)) ArrObjV();
+    new (r->data + n) ArrObjV();
   }
   return r;
 }
@@ -165,5 +165,13 @@ TEST(Objects, Using) {
 
 TEST(Objects, Arrays) {
   EXPECT_EQ(c().compileFn<int()>("aoage((arrobjs(9))[0])")(), 42);
+}
+
+class Undef;
+size_t undefCount(const Undef*) { return 42; }
+
+TEST(Objects, FwdDecl) {
+  c().bind("undefCount", &undefCount);
+  EXPECT_EQ((c().compileFn<size_t(const Undef*)>("u", "undefCount(u)")(reinterpret_cast<const Undef*>(0))), size_t(42));
 }
 

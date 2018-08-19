@@ -2,13 +2,16 @@
 #ifndef HOBBES_UTIL_PERF_HPP_INCLUDED
 #define HOBBES_UTIL_PERF_HPP_INCLUDED
 
+#include <hobbes/util/os.H>
 #include <string>
 #include <sstream>
 #include <iostream>
 #include <time.h>
+#include <sys/time.h>
 
 namespace hobbes {
 
+#if !defined(BUILD_OSX) or defined(CLOCK_REALTIME)
 // access a nanosecond timer to do performance-testing on expressions
 inline long tick() {
   timespec ts;
@@ -28,6 +31,21 @@ inline long time() {
     return 0;
   }
 }
+#else
+// degenerate timers on older versions of OSX
+inline long tick() {
+  struct timeval t;
+  if (gettimeofday(&t, 0) == 0) {
+    return ((t.tv_sec*1000000)+t.tv_usec)*1000;
+  } else {
+    return 0;
+  }
+}
+
+inline long time() {
+  return tick();
+}
+#endif
 
 inline std::string describeNanoTime(long x) {
   static const double micros  = 1000;
@@ -35,7 +53,7 @@ inline std::string describeNanoTime(long x) {
   static const double seconds = 1000*millis;
   static const double minutes = 60*seconds;
 
-  double t = (double)x;
+  double t = static_cast<double>(x);
   std::ostringstream ss;
 
   if ((t / minutes) >= 1) {
@@ -116,7 +134,7 @@ inline unsigned long long rdtsc(void) {
 inline unsigned long long rdtsc(void) {
   unsigned hi, lo;
   __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
-  return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+  return static_cast<unsigned long long>(lo)|(static_cast<unsigned long long>(hi)<<32);
 }
 #endif
 

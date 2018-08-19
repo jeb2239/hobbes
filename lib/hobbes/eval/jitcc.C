@@ -3,35 +3,45 @@
 #include <hobbes/eval/jitcc.H>
 #include <hobbes/eval/cexpr.H>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
 #if LLVM_VERSION_MINOR == 3 or LLVM_VERSION_MINOR == 5
 #include "llvm/ExecutionEngine/JIT.h"
 #else
 #include "llvm/ExecutionEngine/MCJIT.h"
 #endif
 
-#if LLVM_VERSION_MINOR >= 8
+#if LLVM_VERSION_MINOR >= 8 || LLVM_VERSION_MAJOR == 4
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #endif
 
+#if LLVM_VERSION_MAJOR == 4
+#include "llvm/Transforms/Scalar/GVN.h"
+#endif
+
+#include "llvm/Object/ELFObjectFile.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
+
+#pragma GCC diagnostic pop
 
 namespace hobbes {
 
 // this should be moved out of here eventually
 bool isFileType(const MonoTypePtr&);
 
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 6 || LLVM_VERSION_MAJOR == 4
 class jitmm : public llvm::SectionMemoryManager {
 public:
   jitmm(jitcc* jit) : jit(jit) { }
 
   // link symbols across modules :T
   uint64_t getSymbolAddress(const std::string& n) override {
-    if (uint64_t laddr = (uint64_t)this->jit->getSymbolAddress(n)) {
+    if (uint64_t laddr = reinterpret_cast<uint64_t>(this->jit->getSymbolAddress(n))) {
       return laddr;
     }
     if (n.size() > 0 && n[0] == '_') {
-      uint64_t sv = (uint64_t)this->jit->getSymbolAddress(n.substr(1));
+      uint64_t sv = reinterpret_cast<uint64_t>(this->jit->getSymbolAddress(n.substr(1)));
       if (sv) return sv;
     }
     if (uint64_t baddr = llvm::SectionMemoryManager::getSymbolAddress(n)) {
@@ -45,10 +55,10 @@ private:
 };
 #endif
 
-jitcc::jitcc() :
-  currentModule(0), irbuilder(0),
-  globalData(32768 /* min global page size = 32K */),
-  ignoreLocalScope(false)
+jitcc::jitcc(const TEnvPtr& tenv) :
+  tenv(tenv), currentModule(0), irbuilder(0),
+  ignoreLocalScope(false),
+  globalData(32768 /* min global page size = 32K */)
 {
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmParser();
@@ -87,7 +97,7 @@ jitcc::jitcc() :
   this->fpm->doInitialization();
 #endif
 
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 6 || LLVM_VERSION_MAJOR == 4
   this->mpm = new llvm::legacy::PassManager();
   this->mpm->add(llvm::createFunctionInliningPass());
 #endif
@@ -100,7 +110,7 @@ jitcc::~jitcc() {
   }
 
   // release LLVM resources
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 6 || LLVM_VERSION_MAJOR == 4
   for (auto ee : this->eengines) {
     delete ee;
   }
@@ -110,6 +120,10 @@ jitcc::~jitcc() {
 #endif
 
   delete this->irbuilder;
+}
+
+const TEnvPtr& jitcc::typeEnv() const {
+  return this->tenv;
 }
 
 llvm::IRBuilder<>* jitcc::builder() const {
@@ -131,11 +145,11 @@ void* jitcc::getSymbolAddress(const std::string& vn) {
     return gd->second.value;
   }
 
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 6 || LLVM_VERSION_MAJOR == 4
   // do we have a compiled function with this name?
   for (auto ee : this->eengines) {
     if (uint64_t faddr = ee->getFunctionAddress(vn)) {
-      return (void*)faddr;
+      return reinterpret_cast<void*>(faddr);
     }
   }
 #endif
@@ -151,7 +165,7 @@ void jitcc::dump() const {
 }
 
 void* jitcc::getMachineCode(llvm::Function* f, llvm::JITEventListener* listener) {
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 6 || LLVM_VERSION_MAJOR == 4
   // try to get the machine code for this function out of an existing compiled module
   for (auto ee : this->eengines) {
     if (void* pf = ee->getPointerToFunction(f)) {
@@ -166,7 +180,7 @@ void* jitcc::getMachineCode(llvm::Function* f, llvm::JITEventListener* listener)
 
   // make a new execution engine out of this module (finalizing the module)
   std::string err;
-  llvm::ExecutionEngine* ee = makeExecutionEngine(this->currentModule, (llvm::SectionMemoryManager*)(new jitmm(this)));
+  llvm::ExecutionEngine* ee = makeExecutionEngine(this->currentModule, reinterpret_cast<llvm::SectionMemoryManager*>(new jitmm(this)));
 
   if (listener) {
     ee->RegisterJITEventListener(listener);
@@ -240,7 +254,7 @@ void* jitcc::getMachineCode(llvm::Function* f, llvm::JITEventListener* listener)
 #endif
 }
 
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 || LLVM_VERSION_MAJOR == 4
 // get the machine code produced for a given expression
 // (there must be a simpler way)
 class LenWatch : public llvm::JITEventListener {
@@ -251,12 +265,15 @@ public:
   size_t size() const { return this->sz; }
   void NotifyObjectEmitted(const llvm::object::ObjectFile& o, const llvm::RuntimeDyld::LoadedObjectInfo& dl) {
     for (auto s : o.symbols()) {
-      const llvm::object::ELFSymbolRef* esr = (llvm::object::ELFSymbolRef*)(&s);
+      const llvm::object::ELFSymbolRef* esr = reinterpret_cast<const llvm::object::ELFSymbolRef*>(&s);
 
-      if (esr && esr->getName()) {
-        std::string n(esr->getName().get().data(), esr->getName().get().size());
-        if (n == this->fname) {
-          this->sz = esr->getSize();
+      if (esr) {
+        auto nr = esr->getName();
+        if (nr) {
+          std::string n(nr.get().data(), nr.get().size());
+          if (n == this->fname) {
+            this->sz = esr->getSize();
+          }
         }
       }
     }
@@ -307,8 +324,8 @@ jitcc::bytes jitcc::machineCodeForExpr(const ExprPtr& e) {
   std::string     fname = ".asm" + freshName();
   LenWatch        lenwatch(fname);
   llvm::Function* af = compileFunction(fname, str::seq(), MonoTypes(), e);
-  void*           f  = getMachineCode(af, (llvm::JITEventListener*)&lenwatch);
-  bytes           r  = bytes((uint8_t*)f, ((uint8_t*)f) + lenwatch.size());
+  void*           f  = getMachineCode(af, reinterpret_cast<llvm::JITEventListener*>(&lenwatch));
+  bytes           r  = bytes(reinterpret_cast<uint8_t*>(f), reinterpret_cast<uint8_t*>(f) + lenwatch.size());
 
   releaseMachineCode(f);
   return r;
@@ -355,7 +372,7 @@ void jitcc::bindGlobal(const std::string& vn, const MonoTypePtr& ty, void* x) {
   if (is<Func>(ty)) {
     g.ref.fn =
       llvm::Function::Create(
-        (llvm::FunctionType*)toLLVM(ty),
+        reinterpret_cast<llvm::FunctionType*>(toLLVM(ty)),
         llvm::Function::ExternalLinkage,
         vn,
         this->module()
@@ -366,7 +383,7 @@ void jitcc::bindGlobal(const std::string& vn, const MonoTypePtr& ty, void* x) {
 #endif
   } else {
     if (hasPointerRep(ty) || isFileType(ty)) {
-      void** p = (void**)this->globalData.malloc(sizeof(void*));
+      void** p = reinterpret_cast<void**>(this->globalData.malloc(sizeof(void*)));
       *p = x;
       g.value = p;
     }
@@ -452,13 +469,13 @@ llvm::Value* jitcc::loadConstant(const std::string& vn) {
   if (cv != this->constants.end()) {
     if (is<Array>(cv->second.mtype)) {
       return builder()->CreateLoad(refGlobal(vn, cv->second.ref));
-    } else {
-      llvm::Value* r = refGlobal(vn, cv->second.ref);
+    } else if (llvm::Value* r = refGlobal(vn, cv->second.ref)) {
       return hasPointerRep(cv->second.mtype) ? r : builder()->CreateLoad(r);
+    } else {
+      return cv->second.value;
     }
-  } else {
-    return 0;
   }
+  return 0;
 }
 
 void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
@@ -466,13 +483,13 @@ void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
   this->globalExprs[vn] = ue;
 
   typedef void (*Thunk)();
-  MonoTypePtr uety = requireMonotype(ue);
+  MonoTypePtr uety = requireMonotype(this->tenv, ue);
 
   if (isUnit(uety)) {
     // no storage necessary for units
-    Thunk f = (Thunk)reifyMachineCodeForFn(uety, list<std::string>(), list<MonoTypePtr>(), ue);
+    Thunk f = reinterpret_cast<Thunk>(reifyMachineCodeForFn(uety, list<std::string>(), list<MonoTypePtr>(), ue));
     f();
-    releaseMachineCode((void*)f);
+    releaseMachineCode(reinterpret_cast<void*>(f));
     resetMemoryPool();
   } else if (llvm::Constant* c = toLLVMConstant(this, vname, ue)) {
     // make a global constant ...
@@ -490,7 +507,7 @@ void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
   } else {
     // make some space for this global data ...
     if (isLargeType(uety)) {
-      void** pdata = (void**)this->globalData.malloc(sizeof(void*));
+      void** pdata = reinterpret_cast<void**>(this->globalData.malloc(sizeof(void*)));
       *pdata = this->globalData.malloc(sizeOf(uety));
       bindGlobal(vname, uety, pdata);
     } else {
@@ -511,7 +528,7 @@ void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
 
     // compile and run this function, it should then perform the global variable assignment
     // (make sure that any allocation happens in the global context iff we need it)
-    Thunk f = (Thunk)getMachineCode(initfn);
+    Thunk f = reinterpret_cast<Thunk>(getMachineCode(initfn));
 
     if (hasPointerRep(uety)) {
       size_t oldregion = pushGlobalRegion();
@@ -523,16 +540,16 @@ void jitcc::defineGlobal(const std::string& vn, const ExprPtr& ue) {
     }
 
     // clean up
-    releaseMachineCode((void*)f);
+    releaseMachineCode(reinterpret_cast<void*>(f));
     this->builder()->SetInsertPoint(ibb);
     initfn->eraseFromParent();
   }
 }
 
 size_t jitcc::pushGlobalRegion() {
-  std::string n = "global region @ " + str::from((void*)this);
+  std::string n = "global region @ " + str::from(reinterpret_cast<void*>(this));
   size_t grid = findThreadRegion(n);
-  if (grid == -1) {
+  if (grid == static_cast<size_t>(-1)) {
     grid = addThreadRegion(n, &this->globalData);
   }
   return setThreadRegion(grid);
@@ -540,6 +557,13 @@ size_t jitcc::pushGlobalRegion() {
 
 void jitcc::popGlobalRegion(size_t x) {
   setThreadRegion(x);
+}
+
+void* jitcc::memalloc(size_t sz) {
+  size_t r = pushGlobalRegion();
+  void* result = ::hobbes::memalloc(sz);
+  popGlobalRegion(r);
+  return result;
 }
 
 llvm::Value* jitcc::lookupVar(const std::string& vn, const MonoTypePtr& vty) {
@@ -645,7 +669,7 @@ void jitcc::compileFunctions(const LetRec::Bindings& bs, std::vector<llvm::Funct
     this->globalExprs[b.first] = b.second;
 
     if (const Fn* f = is<Fn>(stripAssumpHead(b.second))) {
-      if (const Func* fty = is<Func>(requireMonotype(b.second))) {
+      if (const Func* fty = is<Func>(requireMonotype(this->tenv, b.second))) {
         fs.push_back(UCF(b.first, f->varNames(), fty->parameters(), f->body()));
       } else {
         throw std::runtime_error("Internal error, mutual recursion must be defined over mono-typed functions");
@@ -676,7 +700,7 @@ void jitcc::unsafeCompileFunctions(UCFS* ufs) {
 
   // prepare the environment for these mutually-recursive definitions
   for (size_t f = 0; f < fs.size(); ++f) {
-    llvm::Function* fval = allocFunction(fs[f].name.empty() ? ("/" + freshName()) : fs[f].name, fs[f].argtys, requireMonotype(fs[f].exp));
+    llvm::Function* fval = allocFunction(fs[f].name.empty() ? ("/" + freshName()) : fs[f].name, fs[f].argtys, requireMonotype(this->tenv, fs[f].exp));
     if (fval == 0) {
       throw std::runtime_error("Failed to allocate function");
     }
@@ -689,7 +713,7 @@ void jitcc::unsafeCompileFunctions(UCFS* ufs) {
   for (size_t f = 0; f < fs.size(); ++f) {
     llvm::Function*   fval = fs[f].result;
     const UCF&        ucf  = fs[f];
-    MonoTypePtr       rty  = requireMonotype(ucf.exp);
+    MonoTypePtr       rty  = requireMonotype(this->tenv, ucf.exp);
     llvm::BasicBlock* bb   = llvm::BasicBlock::Create(context(), "entry", fval);
 
     this->builder()->SetInsertPoint(bb);
@@ -744,7 +768,7 @@ llvm::Value* jitcc::compileAllocStmt(llvm::Value* sz, llvm::Type* mty, bool zero
 }
 
 llvm::Value* jitcc::compileAllocStmt(size_t sz, llvm::Type* mty, bool zeroMem) {
-  return compileAllocStmt(cvalue((long)sz), mty, zeroMem);
+  return compileAllocStmt(cvalue(static_cast<long>(sz)), mty, zeroMem);
 }
 
 void jitcc::releaseMachineCode(void*) {
@@ -776,7 +800,7 @@ Values compile(jitcc* c, const Exprs& es) {
 Values compileArgs(jitcc* c, const Exprs& es) {
   Values r;
   for (auto e : es) {
-    MonoTypePtr  et = requireMonotype(e);
+    MonoTypePtr  et = requireMonotype(c->typeEnv(), e);
     llvm::Value* ev = c->compile(e);
 
     if (const Prim* pt = is<Prim>(et)) {
@@ -785,7 +809,7 @@ Values compileArgs(jitcc* c, const Exprs& es) {
       }
     }
 
-    if (Array* a = is<Array>(et)) {
+    if (is<Array>(et)) {
       // variable-length arrays need to be cast to a single type to pass LLVM's check
       r.push_back(c->builder()->CreateBitCast(ev, toLLVM(et)));
     } else if (isUnit(et)) {

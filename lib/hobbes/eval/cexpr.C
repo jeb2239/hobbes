@@ -68,7 +68,7 @@ llvm::ConstantInt* toLLVMConstantInt(const PrimitivePtr& p) {
 // compilation is just a case analysis on expression constructors
 class compileExpF : public switchExpr<llvm::Value*> {
 public:
-  compileExpF(const std::string& vname, jitcc* c) : vname(vname), c(c) {
+  compileExpF(const std::string& vname, jitcc* c) : c(c), vname(vname) {
   }
 
   llvm::Value* with(const Unit*    ) const { return cvalue(true); } // should get optimized away -- unit should have no runtime representation
@@ -137,7 +137,7 @@ public:
     //   this allows us to use primitive instructions / control-flow
     if (Var* fv = is<Var>(stripAssumpHead(v->fn()))) {
       if (op* o = lookupOp(fv->value())) {
-        return o->apply(this->c, requireMonotype(v->args()), requireMonotype(v->type()), v->args());
+        return o->apply(this->c, requireMonotype(this->c->typeEnv(), v->args()), requireMonotype(v->type()), v->args());
       }
     }
 
@@ -159,7 +159,7 @@ public:
         builder()->CreateStore(rhs, lhs);
       }
 
-      return with((const Unit*)0);
+      return with(rcast<const Unit*>(0));
     } else {
       return compile(v->right());
     }
@@ -177,10 +177,8 @@ public:
     if (llvm::Value* cr = compileConstArray(aty->type(), vs)) {
       return cr;
     } else {
-      // a hack to determine the element type for arrays
-      // (we store opaque pointers non-contiguously in arrays)
-      bool         isOpaquePtr = is<OpaquePtr>(aty->type());
-      llvm::Type*  elemTy      = toLLVM(aty->type(), isOpaquePtr);
+      bool         isStoredPtr = is<OpaquePtr>(aty->type()) || is<Func>(aty->type()); // consistent with ctype.C, store opaque ptrs and functions in arrays as pointers
+      llvm::Type*  elemTy      = toLLVM(aty->type(), isStoredPtr);
       llvm::Value* p           = compileAllocStmt(sizeof(long) + sizeOf(aty->type()) * vs.size(), ptrType(llvmVarArrType(elemTy)));
 
       // store the array length
@@ -191,12 +189,12 @@ public:
       if (!isUnit(aty->type())) {
         llvm::Value* adatap = structOffset(builder(), p, 1);
   
-        for (int i = 0; i < vs.size(); ++i) {
+        for (size_t i = 0; i < vs.size(); ++i) {
           llvm::Value* ev = vs[i];
           llvm::Value* ap = offset(builder(), adatap, 0, i);
 
           // we only memcopy into an array if the data is large and isn't an opaque pointer (always write opaque pointers as pointers)
-          if (!isOpaquePtr && isLargeType(aty->type())) {
+          if (!isStoredPtr && isLargeType(aty->type())) {
             builder()->CreateMemCpy(ap, ev, sizeOf(aty->type()), 8);
           } else {
             builder()->CreateStore(ev, ap);
@@ -275,7 +273,7 @@ public:
     llvm::Value* ar   = compile(v->array());
     llvm::Value* ir   = compile(v->index());
     if (isUnit(aity)) {
-      return with((const Unit*)0);
+      return with(rcast<const Unit*>(0));
     }
 
     llvm::Value* ard = structOffset(builder(), ar, 1); // get the array's data pointer
@@ -358,7 +356,7 @@ public:
         throw;
       }
 
-      s->addCase(llvm::ConstantInt::get(llvm::IntegerType::get(context(), 32), (uint64_t)caseID), caseBlock);
+      s->addCase(llvm::ConstantInt::get(llvm::IntegerType::get(context(), 32), scast<uint64_t>(caseID)), caseBlock);
     }
 
     // fill in the default (failure) target for variant matching
@@ -371,7 +369,7 @@ public:
     builder()->SetInsertPoint(failBlock);
     fncall(builder(), f, list(
       this->c->internConstString(v->la().filename()),
-      cvalue((long)v->la().p0.first),
+      cvalue(scast<long>(v->la().p0.first)),
       this->c->internConstString(ltxt),
       builder()->CreateBitCast(var, ptrType(charType()))
     ));
@@ -503,7 +501,8 @@ private:
   std::string vname;
 
   llvm::Value* compileConstArray(const MonoTypePtr& ty, const Values& vs) const {
-    return tryMkConstVarArray(builder(), this->c->module(), toLLVM(ty), vs, is<Array>(ty)); // take care to refer to global array constants by reference (a bit awkward!)
+    auto elemTy = is<Func>(ty) ? ptrType(toLLVM(ty)) : toLLVM(ty);
+    return tryMkConstVarArray(builder(), this->c->module(), elemTy, vs, is<Array>(ty)); // take care to refer to global array constants by reference (a bit awkward!)
   }
 
   llvm::Value* compileConstRecord(const RecordValue& vs, const Record* rty) const {
@@ -627,7 +626,7 @@ llvm::Value* toLLVM(jitcc* c, const std::string& vname, const ExprPtr& exp) {
 class compileConstExpF : public switchExpr<llvm::Constant*> {
 public:
   std::string vname;
-  compileConstExpF(jitcc* c, const std::string& vname) : c(c), vname(vname) { }
+  compileConstExpF(jitcc* c, const std::string& vname) : vname(vname), c(c) { }
 
   llvm::Constant* with(const Unit*    ) const { return cvalue(true); } // should get optimized away -- unit should have no runtime representation
   llvm::Constant* with(const Bool*   v) const { return cvalue(v->value()); }
@@ -712,8 +711,8 @@ public:
     if (!rty) { throw annotated_error(*v, "Internal compiler error, compiling record without record type: " + show(v) + " :: " + show(v->type())); }
 
     Constants rcs;
-    for (auto e : exprs(v->fields())) {
-      if (llvm::Constant* c = switchOf(e, *this)) {
+    for (auto f : v->fields()) {
+      if (llvm::Constant* c = switchOf(f.second, compileConstExpF(this->c, this->vname+"."+f.first))) {
         rcs.push_back(c);
       } else {
         return 0;

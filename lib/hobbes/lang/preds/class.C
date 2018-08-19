@@ -54,18 +54,18 @@ FunDeps inferFundeps(const TEnvPtr& tenv, const Constraints& cs) {
 }
 
 // type class definitions
-TClass::TClass(const Constraints& reqs, const std::string& tcname, int tvs, const Members& tcmembers, const FunDeps& fundeps, const LexicalAnnotation& la) :
+TClass::TClass(const Constraints& reqs, const std::string& tcname, size_t tvs, const Members& tcmembers, const FunDeps& fundeps, const LexicalAnnotation& la) :
   LexicallyAnnotated(la), tcname(tcname), tvs(tvs), reqs(reqs), tcmembers(tcmembers), fundeps(fundeps)
 {
 }
 
-TClass::TClass(const Constraints& reqs, const std::string& tcname, int tvs, const Members& tcmembers, const LexicalAnnotation& la) : TClass(reqs, tcname, tvs, tcmembers, FunDeps(), la) {
+TClass::TClass(const Constraints& reqs, const std::string& tcname, size_t tvs, const Members& tcmembers, const LexicalAnnotation& la) : TClass(reqs, tcname, tvs, tcmembers, FunDeps(), la) {
 }
 
-TClass::TClass(const std::string& tcname, int tvs, const Members& tcmembers, const FunDeps& fundeps, const LexicalAnnotation& la) : TClass(Constraints(), tcname, tvs, tcmembers, fundeps, la) {
+TClass::TClass(const std::string& tcname, size_t tvs, const Members& tcmembers, const FunDeps& fundeps, const LexicalAnnotation& la) : TClass(Constraints(), tcname, tvs, tcmembers, fundeps, la) {
 }
 
-TClass::TClass(const std::string& tcname, int tvs, const Members& tcmembers, const LexicalAnnotation& la) : TClass(Constraints(), tcname, tvs, tcmembers, FunDeps(), la) {
+TClass::TClass(const std::string& tcname, size_t tvs, const Members& tcmembers, const LexicalAnnotation& la) : TClass(Constraints(), tcname, tvs, tcmembers, FunDeps(), la) {
 }
 
 const std::string& TClass::name() const {
@@ -76,7 +76,7 @@ const Constraints& TClass::constraints() const {
   return this->reqs;
 }
 
-int TClass::typeVars() const {
+size_t TClass::typeVars() const {
   return this->tvs;
 }
 
@@ -218,12 +218,27 @@ bool TClass::satisfied(const TEnvPtr& tenv, const ConstraintPtr& c, Definitions*
     if (*f) return true;
   }
 
+  // consider whether all implied constraints are satisfied
+  for (const auto& req : this->reqs) {
+    if (!::hobbes::satisfied(tenv, instantiate(c->arguments(), req), ds)) {
+      return false;
+    }
+  }
+
+  // finally see if we can get an instance
   return matches(tenv, c->arguments(), 0, ds).size() == 1;
 }
 
 bool TClass::satisfiable(const TEnvPtr& tenv, const ConstraintPtr& c, Definitions* ds) const {
   // take care of the obvious
   if (c->arguments().size() != this->tvs) return false;
+
+  // consider satisfiability across all constraints implied by this class
+  for (const auto& req : this->reqs) {
+    if (!::hobbes::satisfiable(tenv, instantiate(c->arguments(), req), ds)) {
+      return false;
+    }
+  }
 
   // for empty class definitions, assume allow constraint usage before definitions
   if (this->tcinstdb.values().size() == 0 && this->tcinstancefns.size() == 0) {
@@ -484,7 +499,7 @@ void TCInstance::show(std::ostream& out) const {
 // generate class instances from class instance functions
 ////////
 TCInstanceFn::TCInstanceFn(const std::string& tcname, const Constraints& reqs, const MonoTypes& itys, const MemberMapping& mmap, const LexicalAnnotation& la) :
-  LexicallyAnnotated(la), tcname(tcname), reqs(reqs), itys(itys), mmap(mmap)
+  LexicallyAnnotated(la), tcname(tcname), reqs(reqs), mmap(mmap), itys(itys)
 {
 }
 

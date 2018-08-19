@@ -35,7 +35,7 @@ Client* decodeConnType(const MonoTypePtr& t) {
     if (const Prim* apn = is<Prim>(ap->fn())) {
       if (apn->name() == "connection" && ap->args().size() == 1) {
         if (const TLong* ptr = is<TLong>(ap->args()[0])) {
-          return (Client*)(ptr->value());
+          return reinterpret_cast<Client*>(ptr->value());
         }
       }
     }
@@ -57,7 +57,7 @@ bool isPartialConnection(const MonoTypePtr& t) {
 }
 
 MonoTypePtr makeConnType(Client* c) {
-  return tapp(primty("connection"), list(tlong((long)c)));
+  return tapp(primty("connection"), list(tlong(reinterpret_cast<long>(c))));
 }
 
 // connect to a remote process at compile-time
@@ -123,7 +123,7 @@ public:
     }
 
     ExprPtr with(const Var* v) const {
-      if (v->value() == connectVar()) {
+      if (v->value() == connectVar() && hasConstraint(this->constraint, v->type())) {
         return mktunit(v->la());
       } else {
         return wrapWithTy(v->type(), new Var(v->value(), v->la()));
@@ -176,7 +176,7 @@ public:
     MonoTypePtr ch, expr, inty, outty;
     if (decodeConstraint(cst, &ch, &expr, &inty, &outty)) {
       if (const TLong* chv = is<TLong>(ch)) {
-        if (Client* conn = (Client*)(chv->value())) {
+        if (Client* conn = reinterpret_cast<Client*>(chv->value())) {
           if (const TExpr* exprv = is<TExpr>(expr)) {
             if (isAllocatedConnection(conn) && !hasFreeVariables(inty)) {
               size_t uc = u->size();
@@ -194,7 +194,7 @@ public:
     MonoTypePtr ch, expr, inty, outty;
     if (decodeConstraint(cst, &ch, &expr, &inty, &outty)) {
       if (const TLong* chv = is<TLong>(ch)) {
-        if (Client* conn = (Client*)(chv->value())) {
+        if (Client* conn = reinterpret_cast<Client*>(chv->value())) {
           if (const TExpr* exprv = is<TExpr>(expr)) {
             if (isAllocatedConnection(conn) && !hasFreeVariables(inty)) {
               return *outty == *conn->output(exprv->expr(), inty);
@@ -214,7 +214,7 @@ public:
 
     TLong* chv = is<TLong>(ch);
     if (!chv) { return is<TVar>(ch); }
-    Client* conn = (Client*)(chv->value());
+    Client* conn = reinterpret_cast<Client*>(chv->value());
     if (!conn || !isAllocatedConnection(conn)) { return false; }
 
     TExpr* exprv = is<TExpr>(expr);
@@ -240,7 +240,7 @@ public:
     }
   
     ExprPtr with(const Var* v) const {
-      if (v->value() == netInvoke()) {
+      if (v->value() == netInvoke() && hasConstraint(this->constraint, v->type())) {
         return var(this->invokeFn, removeConstraint(this->constraint, v->type()), v->la());
       } else {
         return wrapWithTy(v->type(), new Var(v->value(), v->la()));
@@ -298,7 +298,7 @@ private:
     MonoTypePtr ch, expr, inty, outty;
     if (decodeConstraint(cst, &ch, &expr, &inty, &outty)) {
       if (const TLong* chv = is<TLong>(ch)) {
-        if (Client* c = (Client*)(chv->value())) {
+        if (Client* c = reinterpret_cast<Client*>(chv->value())) {
           if (const TExpr* exprv = is<TExpr>(expr)) {
             if (isAllocatedConnection(c) && !hasFreeVariables(inty)) {
               MonoTypePtr retty = tapp(primty("promise"), list(ch, outty));
@@ -307,24 +307,24 @@ private:
               MonoTypePtr unitt=primty("unit"), bytet=primty("byte"), intt=primty("int"), longt=primty("long");
 
               MonoTypePtr urfnty = functy(list(intt), opaqueptr<char>(false));
-              MonoTypePtr rfnty  = functy(list(intt), tuple(list(outty)));
+              MonoTypePtr rfnty  = functy(list(intt), tuplety(list(outty)));
 
               ConstraintPtr incst  = ConstraintPtr(new Constraint("BlockCodec", list(inty)));
-              ConstraintPtr outcst = ConstraintPtr(new Constraint("BlockCodec", list(tuple(list(outty)))));
+              ConstraintPtr outcst = ConstraintPtr(new Constraint("BlockCodec", list(tuplety(list(outty)))));
               ExprPtr qinvokeFn =
                 fn(str::strings(".ch", ".expr", ".x"),
                   // write the 'invoke expression' indicator byte
-                  let(".i0", fncall(var("fdWriteByte", qualtype(functy(list(intt, bytet), unitt)), la), list(constant((int)c->fd(), la), constant((uint8_t)2, la)), la),
+                  let(".i0", fncall(var("fdWriteByte", qualtype(functy(list(intt, bytet), unitt)), la), list(constant(static_cast<int>(c->fd()), la), constant(static_cast<uint8_t>(2), la)), la),
 
                   // write the ID of the remote expression to invoke
-                  let(".i1", fncall(var("fdWriteInt", qualtype(functy(list(intt, longt), unitt)), la), list(constant((int)c->fd(), la), constant((int)invid, la)), la),
+                  let(".i1", fncall(var("fdWriteInt", qualtype(functy(list(intt, longt), unitt)), la), list(constant(static_cast<int>(c->fd()), la), constant(static_cast<int>(invid), la)), la),
 
                   // write argument data for this invocation
-                  let(".i2", fncall(var("writeTo", qualtype(list(incst), functy(list(intt, inty), unitt)), la), list(constant((int)c->fd(), la), var(".x", inty, la)), la),
+                  let(".i2", fncall(var("writeTo", qualtype(list(incst), functy(list(intt, inty), unitt)), la), list(constant(static_cast<int>(c->fd()), la), var(".x", inty, la)), la),
 
                   // enqueue the read function for this expected result
                   let("r", fncall(var("unsafeAppendClientReadFn", functy(list(longt, urfnty), longt), la), list(
-                              constant((long)chv->value(), la),
+                              constant(static_cast<long>(chv->value()), la),
                               fncall(var("unsafeCast", functy(list(rfnty), urfnty), la), list(var("readFrom", qualtype(list(outcst), rfnty), la)), la)
                            ), la),
 
@@ -363,7 +363,7 @@ public:
     MonoTypePtr ch, rty;
     if (decodeConstraint(cst, &ch, &rty)) {
       if (const TLong* chv = is<TLong>(ch)) {
-        if (Client* conn = (Client*)(chv->value())) {
+        if (Client* conn = reinterpret_cast<Client*>(chv->value())) {
           if (isAllocatedConnection(conn) && !hasFreeVariables(rty)) {
             return hobbes::satisfied(tenv, ConstraintPtr(new Constraint("BlockCodec", list(rty))), ds);
           }
@@ -379,7 +379,7 @@ public:
 
     TLong* chv = is<TLong>(ch);
     if (!chv) { return is<TVar>(ch); }
-    Client* conn = (Client*)(chv->value());
+    Client* conn = reinterpret_cast<Client*>(chv->value());
     if (!conn || !isAllocatedConnection(conn)) { return false; }
 
     return hasFreeVariables(rty) || satisfied(tenv, cst, ds);
@@ -402,7 +402,7 @@ public:
     }
   
     ExprPtr with(const Var* v) const {
-      if (v->value() == receive()) {
+      if (v->value() == receive() && hasConstraint(this->constraint, v->type())) {
         return var(this->receiveFn, removeConstraint(this->constraint, v->type()), v->la());
       } else {
         return wrapWithTy(v->type(), new Var(v->value(), v->la()));
@@ -456,10 +456,10 @@ private:
     MonoTypePtr ch, ty;
     if (decodeConstraint(cst, &ch, &ty)) {
       if (const TLong* chv = is<TLong>(ch)) {
-        if (Client* c = (Client*)(chv->value())) {
+        if (Client* c = reinterpret_cast<Client*>(chv->value())) {
           if (isAllocatedConnection(c) && !hasFreeVariables(ty)) {
             // our receive function is uniquely determined by its connection and result type
-            std::string recvFnName = ".cxn.recvFn." + str::from(chv->value()) + "." + str::from((long)ty.get());
+            std::string recvFnName = ".cxn.recvFn." + str::from(chv->value()) + "." + str::from(reinterpret_cast<long>(ty.get()));
 
             // we only need to generate this function if we've never seen this return type before
             try {
@@ -475,11 +475,11 @@ private:
                 proj(
                   assume(
                     fncall(
-                      var("unsafeCast", functy(list(opaqueptr<char>(false)), tuple(list(ty))), la), list(
+                      var("unsafeCast", functy(list(opaqueptr<char>(false)), tuplety(list(ty))), la), list(
                         fncall(
                           var("unsafeClientRead", functy(list(primty("long"), primty("long")), opaqueptr<char>(false)), la),
                           list(
-                            constant((long)chv->value(), la),
+                            constant(static_cast<long>(chv->value()), la),
                             var("x", primty("long"), la)
                           ),
                           la
@@ -487,7 +487,7 @@ private:
                       ),
                       la
                     ),
-                    tuple(list(ty)),
+                    tuplety(list(ty)),
                     la
                   ),
                   ".f0",
@@ -509,7 +509,7 @@ private:
 
 // show a connection state
 void printConnectionUF(long x) {
-  ((Client*)x)->show(std::cout);
+  reinterpret_cast<Client*>(x)->show(std::cout);
 }
 
 struct printConnectionF : public op {
@@ -521,7 +521,7 @@ struct printConnectionF : public op {
   llvm::Value* apply(jitcc* c, const MonoTypes& tys, const MonoTypePtr& rty, const Exprs& es) {
     if (Client* conn = decodeConnType(tys[0])) {
       ExprPtr wfrtfn = var(this->showf, functy(list(primty("long")), primty("unit")), es[0]->la());
-      return c->compile(fncall(wfrtfn, list(constant((long)conn, es[0]->la())), es[0]->la()));
+      return c->compile(fncall(wfrtfn, list(constant(reinterpret_cast<long>(conn), es[0]->la())), es[0]->la()));
     } else {
       throw std::runtime_error("Internal error, invalid connection type: " + show(tys[0]));
     }

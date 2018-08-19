@@ -84,7 +84,7 @@ TEST(Structs, Consts) {
 }
 
 TEST(Structs, Reflect) {
-  EXPECT_EQ(c().compileFn<DynStructTest*()>("{f=true, a=42L, b=100L}")()->a, 42);
+  EXPECT_EQ(c().compileFn<DynStructTest*()>("{f=true, a=42L, b=100L}")()->a, uint64_t(42));
 }
 
 TEST(Structs, Functions) {
@@ -102,11 +102,21 @@ TEST(Structs, Bindings) {
 }
 
 TEST(Structs, Assignment) {
+  bool assignExn = false;
   try {
     c().compileFn<void()>("bob.x <- 'c'")();
-    EXPECT_TRUE( false && "Expected char assignment to int field to fail to compile (mistake in assignment compilation?)" );
   } catch (std::exception&) {
+    assignExn = true;
   }
+  EXPECT_TRUE( assignExn && "Expected char assignment to int field to fail to compile (mistake in assignment compilation?)" );
+
+  bool introExn = false;
+  try {
+    c().compileFn<int()>("{x=1, x='c'}.x");
+  } catch (std::exception&) {
+    introExn = true;
+  }
+  EXPECT_TRUE( introExn && "Expected rejection of record introduction with duplicate field names" );
 
   c().compileFn<void()>("bob.x <- 90")();
   EXPECT_TRUE(c().compileFn<bool()>("bob.x == 90")());
@@ -163,6 +173,11 @@ DEFINE_STRUCT(AlignB,
   (ibft, data)
 );
 
+TEST(Structs, LiftTuple) {
+  hobbes::tuple<short, int, std::string> p(42, 314159, "jimmy");
+  EXPECT_TRUE(c().compileFn<bool(const hobbes::tuple<short,int,std::string>&)>("p", "p==(42,314159,\"jimmy\")")(p));
+}
+
 typedef variant<unit, AlignA> MaybeAlignA;
 typedef variant<unit, AlignB> MaybeAlignB;
 
@@ -183,7 +198,7 @@ TEST(Structs, Alignment) {
 
   Record::Members ms;
   ms.push_back(Record::Member("x", lift<int>::type(c()), 0));
-  ms.push_back(Record::Member("y", lift<long>::type(c()), (int)(size_t)&((PadTest*)0)->y));
+  ms.push_back(Record::Member("y", lift<long>::type(c()), static_cast<int>(reinterpret_cast<size_t>(&reinterpret_cast<PadTest*>(0)->y))));
   MonoTypePtr pty(Record::make(Record::withExplicitPadding(ms)));
 
   PadTest p;

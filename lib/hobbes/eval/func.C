@@ -252,7 +252,7 @@ public:
 
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
-    static PolyTypePtr ifty(new PolyType(1, qualtype(Func::make(tuple(list(MonoTypePtr(Prim::make("bool")), tg0, tg0)), tg0))));
+    static PolyTypePtr ifty(new PolyType(1, qualtype(Func::make(tuplety(list(MonoTypePtr(Prim::make("bool")), tg0, tg0)), tg0))));
     return ifty;
   }
 };
@@ -267,7 +267,7 @@ public:
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr tlong(Prim::make("long"));
-    static PolyTypePtr alenty(new PolyType(1, qualtype(Func::make(tuple(list(MonoTypePtr(Array::make(tg0)))), tlong))));
+    static PolyTypePtr alenty(new PolyType(1, qualtype(Func::make(tuplety(list(MonoTypePtr(Array::make(tg0)))), tlong))));
 
     return alenty;
   }
@@ -290,14 +290,14 @@ public:
     llvm::Value* d1 = structOffset(c->builder(), a1, 1);
 
     llvm::Value* aclen = c->builder()->CreateAdd(c0, c1);
-    llvm::Value* mlen  = c->builder()->CreateAdd(cvalue((long)sizeof(long)), c->builder()->CreateMul(aclen, cvalue((long)sizeOf(aty->type()))));
+    llvm::Value* mlen  = c->builder()->CreateAdd(cvalue(static_cast<long>(sizeof(long))), c->builder()->CreateMul(aclen, cvalue(static_cast<long>(sizeOf(aty->type())))));
 
     llvm::Value* cmdata = c->compileAllocStmt(mlen, toLLVM(tys[0]));
     c->builder()->CreateStore(aclen, structOffset(c->builder(), cmdata, 0));
 
     if (!isUnit(aty->type())) {
       // hack to acknowledge the fact that opaque pointers are stored as pointers within arrays
-      long elemSize = is<OpaquePtr>(aty->type()) ? sizeof(void*) : ((long)sizeOf(aty->type()));
+      long elemSize = is<OpaquePtr>(aty->type()) ? sizeof(void*) : static_cast<long>(sizeOf(aty->type()));
 
       llvm::Value* od = structOffset(c->builder(), cmdata, 1);
       c->builder()->CreateMemCpy(offset(c->builder(), od, 0),  d0, c->builder()->CreateMul(c0, cvalue(elemSize)), 8);
@@ -309,7 +309,7 @@ public:
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr earr(Array::make(tg0));
-    static PolyTypePtr fty(new PolyType(1, qualtype(Func::make(tuple(list(earr,earr)), earr))));
+    static PolyTypePtr fty(new PolyType(1, qualtype(Func::make(tuplety(list(earr,earr)), earr))));
 
     return fty;
   }
@@ -347,7 +347,7 @@ class salenexp : public op {
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr tg1(TGen::make(1));
     static MonoTypePtr tlong(Prim::make("long"));
-    static PolyTypePtr alenty(new PolyType(2, qualtype(Func::make(tuple(list(MonoTypePtr(FixedArray::make(tg0, tg1)))), tlong))));
+    static PolyTypePtr alenty(new PolyType(2, qualtype(Func::make(tuplety(list(MonoTypePtr(FixedArray::make(tg0, tg1)))), tlong))));
 
     return alenty;
   }
@@ -372,7 +372,7 @@ class saelem : public op {
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr tg1(TGen::make(1));
     static MonoTypePtr tlong(Prim::make("long"));
-    static PolyTypePtr aelemty(new PolyType(2, qualtype(Func::make(tuple(list(MonoTypePtr(FixedArray::make(tg0, tg1)), tlong)), tg0))));
+    static PolyTypePtr aelemty(new PolyType(2, qualtype(Func::make(tuplety(list(MonoTypePtr(FixedArray::make(tg0, tg1)), tlong)), tg0))));
     return aelemty;
   }
 };
@@ -389,7 +389,7 @@ class saacopy : public op {
     llvm::Value* vard = structOffset(c->builder(), varr, 1); // get the var-length array's 'data' pointer
 
     llvm::Value* len  = c->compile(es[2]);
-    llvm::Value* lenb = c->builder()->CreateMul(len, cvalue((long)sizeOf(aty->type())));
+    llvm::Value* lenb = c->builder()->CreateMul(len, cvalue(static_cast<long>(sizeOf(aty->type()))));
 
     c->builder()->CreateMemCpy(farr, vard, lenb, 8);
     return cvalue(true);
@@ -402,7 +402,7 @@ class saacopy : public op {
     static MonoTypePtr vaty(Array::make(tg0));
     static MonoTypePtr lty (Prim::make("long"));
     static MonoTypePtr rty (Prim::make("unit"));
-    static PolyTypePtr fty(new PolyType(2, qualtype(Func::make(tuple(list(faty, vaty, lty)), rty))));
+    static PolyTypePtr fty(new PolyType(2, qualtype(Func::make(tuplety(list(faty, vaty, lty)), rty))));
     return fty;
   }
 };
@@ -442,7 +442,7 @@ public:
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr tg1(TGen::make(1));
     static MonoTypePtr tf(Func::make(tg0, tg1));
-    static MonoTypePtr apt(Func::make(tuple(list(tf, tg0)), tg1));
+    static MonoTypePtr apt(Func::make(tuplety(list(tf, tg0)), tg1));
     static PolyTypePtr appt(new PolyType(2, qualtype(apt)));
     return appt;
   }
@@ -457,7 +457,7 @@ public:
 
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
-    static PolyTypePtr idty(new PolyType(1, qualtype(Func::make(tuple(list(tg0)), tg0))));
+    static PolyTypePtr idty(new PolyType(1, qualtype(Func::make(tuplety(list(tg0)), tg0))));
     return idty;
   }
 };
@@ -477,7 +477,7 @@ public:
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr tg1(TGen::make(1));
-    static PolyTypePtr idty(new PolyType(2, qualtype(Func::make(tuple(list(tg0)), tg1))));
+    static PolyTypePtr idty(new PolyType(2, qualtype(Func::make(tuplety(list(tg0)), tg1))));
     return idty;
   }
 };
@@ -500,7 +500,7 @@ public:
 
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
-    static PolyTypePtr npty(new PolyType(1, qualtype(Func::make(tuple(list(prim<void>())), tg0))));
+    static PolyTypePtr npty(new PolyType(1, qualtype(Func::make(tuplety(list(prim<void>())), tg0))));
     return npty;
   }
 private:
@@ -516,7 +516,7 @@ public:
     }
 
     llvm::Value* aclen  = c->compile(es[0]);
-    llvm::Value* mlen   = c->builder()->CreateAdd(cvalue((long)sizeof(long)), c->builder()->CreateMul(aclen, cvalue((long)sizeOf(aty->type()))));
+    llvm::Value* mlen   = c->builder()->CreateAdd(cvalue(static_cast<long>(sizeof(long))), c->builder()->CreateMul(aclen, cvalue(static_cast<long>(sizeOf(aty->type())))));
     llvm::Value* cmdata = c->compileAllocStmt(mlen, toLLVM(rty));
     c->builder()->CreateStore(aclen, structOffset(c->builder(), cmdata, 0));
 
@@ -526,7 +526,7 @@ public:
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr tlng = prim<long>();
-    static PolyTypePtr npty(new PolyType(1, qualtype(Func::make(tuple(list(tlng)), arrayty(tg0)))));
+    static PolyTypePtr npty(new PolyType(1, qualtype(Func::make(tuplety(list(tlng)), arrayty(tg0)))));
     return npty;
   }
 };
@@ -543,7 +543,7 @@ public:
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr tint(Prim::make("int"));
-    static PolyTypePtr fty(new PolyType(1, qualtype(Func::make(tuple(list(tg0, tint)), tg0))));
+    static PolyTypePtr fty(new PolyType(1, qualtype(Func::make(tuplety(list(tg0, tint)), tg0))));
     return fty;
   }
 };
@@ -576,7 +576,7 @@ public:
   PolyTypePtr type(typedb&) const {
     static MonoTypePtr tg0(TGen::make(0));
     static MonoTypePtr tint(Prim::make("int"));
-    static PolyTypePtr fty(new PolyType(1, qualtype(Func::make(tuple(list(tg0, tint)), tg0))));
+    static PolyTypePtr fty(new PolyType(1, qualtype(Func::make(tuplety(list(tg0, tint)), tg0))));
     return fty;
   }
 };
@@ -782,7 +782,7 @@ public:
       llvm::Value* tag  = c->builder()->CreateLoad(ptag, false);
 
       // compare the tag data to the head tag id
-      llvm::Value* htagv  = cvalue((int)vheadm.id);
+      llvm::Value* htagv  = cvalue(static_cast<int>(vheadm.id));
       llvm::Value* ishtag = c->builder()->CreateICmpEQ(tag, htagv);
 
       // get an offset to the payload data
@@ -945,23 +945,6 @@ class packShortF : public op {
   }
 };
 
-class threadF : public op {
-  llvm::Value* apply(jitcc* c, const MonoTypes& tys, const MonoTypePtr& rty, const Exprs& es) {
-    llvm::Function* f = c->lookupFunction(".thread");
-    if (!f) throw std::runtime_error("Expected thread allocation function as call.");
-
-    llvm::Value* cptr  = c->builder()->CreateBitCast(c->compile(es[0]), ptrType(charType()));
-    return fncall(c->builder(), f, list<llvm::Value*>(cptr));
-  }
-
-  PolyTypePtr type(typedb& db) const {
-    static MonoTypePtr tunit(Prim::make("unit"));
-    static MonoTypePtr tlong(Prim::make("long"));
-    static PolyTypePtr fnty(new PolyType(0, qualtype(functy(list(closty(list(tunit), tunit)), tlong))));
-    return fnty;
-  }
-};
-
 class cptrrefbyF : public op {
   llvm::Value* apply(jitcc* c, const MonoTypes& tys, const MonoTypePtr& rty, const Exprs& es) {
     return
@@ -1058,9 +1041,6 @@ void initDefOperators(cc* c) {
 
   // dereference through char pointers
   BINDF("cptrrefby", new cptrrefbyF());
-
-  // launch a thread
-  BINDF("thread", new threadF());
 }
 
 }

@@ -23,10 +23,10 @@ template <typename T>
     return ss.str();
   }
 
-std::string show(const PolyType& e)      { return showT(*simplifyVarNames(e)); }
-std::string show(const QualType& e)      { return showT(*simplifyVarNames(e)); }
-std::string show(const Constraint& e)    { return showT(*simplifyVarNames(e)); }
-std::string show(const MonoType& e)      { return showT(*simplifyVarNames(e)); }
+std::string show(const PolyType& e)   { return showT(*simplifyVarNames(e)); }
+std::string show(const QualType& e)   { return showT(*simplifyVarNames(e)); }
+std::string show(const Constraint& e) { return showT(*simplifyVarNames(e)); }
+std::string show(const MonoType& e)   { return showT(*simplifyVarNames(e)); }
 
 std::string show(const PolyType* e)      { return show(*e); }
 std::string show(const PolyTypePtr& e)   { return show(*e); }
@@ -343,13 +343,13 @@ bool satisfiable(const TEnvPtr& tenv, const Constraints& cs, Definitions* ds) {
 ////////
 // polytypes
 ////////
-PolyType::PolyType(int vs, const QualTypePtr& qt) : vs(vs), qt(qt) {
+PolyType::PolyType(size_t vs, const QualTypePtr& qt) : vs(vs), qt(qt) {
 }
 
 PolyType::PolyType(const QualTypePtr& qt) : vs(0), qt(qt) {
 }
 
-int PolyType::typeVariables() const {
+size_t PolyType::typeVariables() const {
   return this->vs;
 }
 
@@ -393,7 +393,7 @@ void QualType::show(std::ostream& out) const {
   } else {
     out << "(";
     this->cs[0]->show(out);
-    for (int i = 1; i < this->cs.size(); ++i) {
+    for (size_t i = 1; i < this->cs.size(); ++i) {
       out << ", ";
       this->cs[i]->show(out);
     }
@@ -463,7 +463,7 @@ void Constraint::show(std::ostream& out) const {
     this->mts[3]->show(out);
   } else {
     out << this->cat;
-    for (int i = 0; i < this->mts.size(); ++i) {
+    for (size_t i = 0; i < this->mts.size(); ++i) {
       out << " ";
       this->mts[i]->show(out);
     }
@@ -474,7 +474,7 @@ bool Constraint::operator==(const Constraint& rhs) const {
   if (this->cat != rhs.cat || this->mts.size() != rhs.mts.size()) {
     return false;
   } else {
-    for (int i = 0; i < this->mts.size(); ++i) {
+    for (size_t i = 0; i < this->mts.size(); ++i) {
       if (!(*this->mts[i] == *rhs.mts[i])) {
         return false;
       }
@@ -505,12 +505,12 @@ bool isFileRef(const MonoTypePtr& mt) {
 }
 
 // memory alignment for monotypes -- this may need to be looked at more closely and factored out of this module
-unsigned int alignment(const MonoTypePtr& ty) {
-  if (const Prim* pty = is<Prim>(ty)) {
+unsigned int alignment(const MonoTypePtr& pty) {
+  MonoTypePtr ty = repType(pty);
+
+  if (is<Prim>(ty)) {
     if (isUnit(ty)) {
       return 1;
-    } else if (pty->representation()) {
-      return alignment(pty->representation());
     } else {
       return sizeOf(ty);
     }
@@ -534,9 +534,6 @@ unsigned int alignment(const MonoTypePtr& ty) {
     return sizeof(void*);
   } else if (isFileRef(ty)) {
     return sizeof(uint64_t);
-  } else if (is<TApp>(ty)) {
-    // TODO: apply through type functions
-    return 1;
   } else {
     return 1;
   }
@@ -836,7 +833,7 @@ bool Variant::Member::operator<(const Variant::Member& rhs) const {
   }
 }
 
-Variant::Variant(const Members& ms) : ms(ms), payloadSizeM(-1) {
+Variant::Variant(const Members& ms) : payloadSizeM(-1), ms(ms) {
   for (const Member& m : ms) {
     this->freeTVars = setUnion(this->freeTVars, m.type->freeTVars);
     this->tgenCount = std::max<int>(this->tgenCount, m.type->tgenCount);
@@ -991,7 +988,7 @@ unsigned int Variant::payloadOffset() const {
 }
 
 unsigned int Variant::payloadSize() const {
-  if (this->payloadSizeM == -1) {
+  if (this->payloadSizeM == static_cast<unsigned int>(-1)) {
     this->payloadSizeM = 0;
     for (auto m : this->ms) {
       this->payloadSizeM = std::max(this->payloadSizeM, sizeOf(m.type));
@@ -1195,7 +1192,7 @@ unsigned int maxFieldAlignmentF(const Record::Members& ms) {
 }
 
 unsigned int Record::maxFieldAlignment() const {
-  if (this->maxFieldAlignmentM == -1) {
+  if (this->maxFieldAlignmentM == static_cast<unsigned int>(-1)) {
     this->maxFieldAlignmentM = maxFieldAlignmentF(this->ms);
   }
   return this->maxFieldAlignmentM;
@@ -1232,7 +1229,7 @@ Record::Members Record::withExplicitPadding(const Members& ms, const std::string
     if (m->offset > o) {
       r.push_back(Member(pfx + str::from(p++), arrayty(prim<char>(), m->offset - o)));
     }
-    unsigned int msz = sizeOf(m->type);
+    size_t msz = sizeOf(m->type);
     o = m->offset + msz;
 
     if (msz > 0) {
@@ -1245,7 +1242,7 @@ Record::Members Record::withExplicitPadding(const Members& ms, const std::string
 
   if (talign > 0) {
     unsigned int asz = align<unsigned int>(o, talign);
-    if (asz > o) {
+    if (int(asz) > o) {
       r.push_back(Member(pfx + str::from(p++), arrayty(prim<char>(), asz - o)));
     }
   }
@@ -1283,7 +1280,7 @@ void showAsRecord(std::ostream& out, const Record::Members& ms) {
     out << "{ ";
     out << ms[0].field << ":";
     ms[0].type->show(out);
-    for (int i = 1; i < ms.size(); ++i) {
+    for (size_t i = 1; i < ms.size(); ++i) {
       out << ", " << ms[i].field << ":";
       ms[i].type->show(out);
     }
@@ -2065,6 +2062,20 @@ MonoTypes simplifyVarNames(const MonoTypes& mts) {
   return substitute(canonicalNameSubst(tvarNames(mts)), mts);
 }
 
+// reduce types to their primitive representation
+MonoTypePtr repType(const MonoTypePtr& t) {
+  if (const Prim* pt = is<Prim>(t)) {
+    if (pt->representation()) {
+      return repType(pt->representation());
+    }
+  } else if (const TApp* a = is<TApp>(t)) {
+    if (const TAbs* tf = is<TAbs>(repType(a->fn()))) {
+      return repType(substitute(substitution(tf->args(), a->args()), tf->body()));
+    }
+  }
+  return t;
+}
+
 // compute the size of a monotype (in bytes)
 typedef unsigned int nat;
 nat nadd(nat lhs, nat rhs) { return lhs + rhs; }
@@ -2166,21 +2177,21 @@ private:
   }
 
   unsigned int r(const MonoTypePtr& t) const {
-    if (t->memorySize == -1) {
+    if (t->memorySize == static_cast<unsigned int>(-1)) {
       t->memorySize = switchOf(t, *this);
     }
     return t->memorySize;
   }
 
   unsigned int rv(const Record* t) const {
-    if (t->memorySize == -1) {
+    if (t->memorySize == static_cast<unsigned int>(-1)) {
       t->memorySize = t->size();
     }
     return t->memorySize;
   }
 
   unsigned int rv(const Variant* t) const {
-    if (t->memorySize == -1) {
+    if (t->memorySize == static_cast<unsigned int>(-1)) {
       t->memorySize = t->size();
     }
     return t->memorySize;
@@ -2188,7 +2199,7 @@ private:
 };
 
 unsigned int sizeOf(const MonoTypePtr& mt) {
-  if (mt->memorySize == -1) {
+  if (mt->memorySize == static_cast<unsigned int>(-1)) {
     mt->memorySize = switchOf(mt, sizeOfF());
   }
   return mt->memorySize;
@@ -2295,10 +2306,10 @@ typedef std::vector<unsigned char> bytes;
 void write(bool b,               bytes* out) { out->push_back(b ? 0x01 : 0x00); }
 void write(char c,               bytes* out) { out->push_back(c); }
 void write(unsigned char c,      bytes* out) { out->push_back(c); }
-void write(int x,                bytes* out) { out->insert(out->end(), (unsigned char*)&x, ((unsigned char*)&x) + sizeof(x)); }
-void write(long x,               bytes* out) { out->insert(out->end(), (unsigned char*)&x, ((unsigned char*)&x) + sizeof(x)); }
-void write(size_t x,             bytes* out) { out->insert(out->end(), (unsigned char*)&x, ((unsigned char*)&x) + sizeof(x)); }
-void write(unsigned int x,       bytes* out) { out->insert(out->end(), (unsigned char*)&x, ((unsigned char*)&x) + sizeof(x)); }
+void write(int x,                bytes* out) { out->insert(out->end(), reinterpret_cast<unsigned char*>(&x), reinterpret_cast<unsigned char*>(&x) + sizeof(x)); }
+void write(long x,               bytes* out) { out->insert(out->end(), reinterpret_cast<unsigned char*>(&x), reinterpret_cast<unsigned char*>(&x) + sizeof(x)); }
+void write(size_t x,             bytes* out) { out->insert(out->end(), reinterpret_cast<unsigned char*>(&x), reinterpret_cast<unsigned char*>(&x) + sizeof(x)); }
+void write(unsigned int x,       bytes* out) { out->insert(out->end(), reinterpret_cast<unsigned char*>(&x), reinterpret_cast<unsigned char*>(&x) + sizeof(x)); }
 void write(const std::string& s, bytes* out) { write(s.size(), out); out->insert(out->end(), s.begin(), s.end()); }
 
 template <typename T>
@@ -2313,7 +2324,7 @@ template <typename T>
 template <typename T>
   struct readF {
     static T read(const bytes& in, unsigned int* n) {
-      T r = *((T*)&(in[*n]));
+      T r = *reinterpret_cast<const T*>(&(in[*n]));
       *n += sizeof(T);
       return r;
     }
@@ -2330,7 +2341,10 @@ template <>
   struct readF<std::string> {
     static std::string read(const bytes& in, unsigned int* n) {
       size_t sz = readF<size_t>::read(in, n);
-      std::string r((const char*)(&(in[*n])), sz);
+      if (sz > (in.size()-*n)) {
+        throw std::runtime_error("Encoded type information is invalid (recorded string with size=" + str::from(sz) + " but only " + str::from(in.size()-*n) + " bytes are available to read)");
+      }
+      std::string r(reinterpret_cast<const char*>(&(in[*n])), sz);
       *n += sz;
       return r;
     }
@@ -2519,7 +2533,7 @@ void encode(const MonoTypePtr& mt, std::vector<unsigned char>* out) {
 
 void encode(const QualTypePtr& qty, std::vector<unsigned char>* out) {
   if (isMonotype(qty)) {
-    write((size_t)0, out);
+    write(static_cast<size_t>(0), out);
     encode(qty->monoType(), out);
   } else {
     throw std::runtime_error("Qualified type serialization, NYI\n\t" + show(qty));
@@ -2660,6 +2674,7 @@ MonoTypePtr decodeFrom(const bytes& in, unsigned int* n) {
   case OpaquePtr::type_case_id:  return decodeOpaquePtr(in, n);
   case TVar::type_case_id:       return decodeTVar(in, n);
   case TGen::type_case_id:       return decodeTGen(in, n);
+  case TAbs::type_case_id:       return decodeTAbs(in, n);
   case TApp::type_case_id:       return decodeTApp(in, n);
   case FixedArray::type_case_id: return decodeFixedArr(in, n);
   case Array::type_case_id:      return decodeArr(in, n);
@@ -2688,7 +2703,7 @@ MonoTypePtr decode(const unsigned char* b, const unsigned char* e) {
 
 void encode(const QualTypePtr& qty, std::ostream& out) {
   if (isMonotype(qty)) {
-    encode((size_t)0, out);
+    encode(static_cast<size_t>(0), out);
     encode(qty->monoType(), out);
   } else {
     throw std::runtime_error("Qualified type serialization, NYI\n\t" + show(qty));

@@ -3,21 +3,10 @@
 */
 class (Deconstruct f (c*a*r)) => Function f c a r | f -> c a r, c a r -> f where
   apply :: (f, a) -> r
-
-// eventually it'd be better to make this a generic definition for any arity
 instance Function (a -> r) "->" a r where
   apply f x = f(x)
-instance Function ((a,b)->r) "->" (a*b) r where
-  apply = applyCFn
-instance Function ((a,b,c)->r) "->" (a*b*c) r where
-  apply = applyCFn
-
 instance Function (exists E.(((E,a)->r)*E)) "closure" a r where
   apply c x = unpack z = (c :: exists E.(((E,a)->r)*E)) in (z.0(z.1,x))
-instance Function (exists E.(((E,a,b)->r)*E)) "closure" (a*b) r where
-  apply c x = unpack z = (c :: exists E.(((E,a,b)->r)*E)) in (z.0(z.1,x.0,x.1))
-instance Function (exists E.(((E,a,b,c)->r)*E)) "closure" (a*b*c) r where
-  apply c x = unpack z = (c :: exists E.(((E,a,b,c)->r)*E)) in (z.0(z.1,x.0,x.1,x.2))
 
 // also this should be generalized to any arity
 toClosure :: (a -> b) -> (exists E.(((E, a) -> b) * E))
@@ -45,33 +34,69 @@ instance (p++s=a, Function f p rf, Function rf s r) => Function f a r where
 /*
   abstract over "array-ness" (abstracting pattern-matches over 'array-like' things)
 */
-class Array a i | a -> i where
-  size    :: a -> long
-  element :: (a, long) -> i
+class Array xs x | xs -> x where
+  size     :: xs -> long
+  element  :: (xs, long) -> x
+  elements :: (xs, long, long) -> [x]
+
+// a default implementation of 'elements' in terms of 'element' (good enough if indexing is fast)
+instance Convert long long where
+  convert = id
+
+selectElementsInto :: (xs, (xs, long) -> x, long, long, [x], long, long) -> [x]
+selectElementsInto xs lkup i e ss j step =
+  if (leq(i, e)) then
+    ss
+  else
+    do { ss[j] <- lkup(xs, i); return selectElementsInto(xs, lkup, ladd(i,1L), e, ss, ladd(j,step), step) }
+
+defElementsWith :: (xs, (xs, long) -> x, long, long) -> [x]
+defElementsWith xs lkup i e = selectElementsInto(xs, lkup, i, e, newArray(lsub(e,i)), 0L, 1L)
 
 instance Array [a] a where
   size = length
   element x i = x[i]
+  elements xs i e = defElementsWith(xs, \x i.x[i], i, e)
+
+fstrlen cs i = if (leq(i,salength(cs))) then i else if (ceq(saelem(cs,i),'\0')) then i else fstrlen(cs,ladd(i,1L))
+instance Array [:char|n:] char where
+  size cs = fstrlen(cs,0L)
+  element = saelem
+  elements cs i e = defElementsWith(cs, saelem, i, e)
 
 instance Array [:a|n:] a where
   size = salength
   element = saelem
+  elements xs i e = defElementsWith(xs, saelem, i, e)
 
 instance Array <std.string> char where
   size = stdstrsize
   element = stdstrelem
+  elements xs i e = defElementsWith(xs, stdstrelem, i, e)
 
 instance Array <char> char where
   size = cstrlen
   element = cstrelem
+  elements xs i e = defElementsWith(xs, cstrelem, i, e)
 
 instance Array (<char> * long) char where
   size    p   = p.1
   element p i = cptrrefby(p.0, i)
+  elements xs i e = defElementsWith(xs, \(p,_) i.cptrrefby(p,i), i, e)
 
 instance Array (long * <char>) char where
   size    p   = p.0
   element p i = cptrrefby(p.1, i)
+  elements xs i e = defElementsWith(xs, \(_,p) i.cptrrefby(p,i), i, e)
+
+data vector t s n = [:byte|n:]
+instance Array (vector t s n) t where
+  size     v     = vectorSize(unsafeCast(v), salength(newPrim()::[:char|s:]))
+  element  v i   = element(unsafeCast(vectorData(unsafeCast(v)))::[:t|1:], i)
+  elements v i e = elements(unsafeCast(vectorData(unsafeCast(v)))::[:t|1:], i, e)
+
+reverse :: [a] -> [a]
+reverse xs = selectElementsInto(xs, element, 0L, size(xs), newArray(size(xs)), lsub(size(xs),1L), lneg(1L))
 
 // sometimes it's a trivial/obvious single-step to array-ness
 class ArrayView t a | t -> a where

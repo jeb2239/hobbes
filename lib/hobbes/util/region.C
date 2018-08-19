@@ -8,14 +8,13 @@ namespace hobbes {
 
 void dbglog(const std::string&);
 
-region::region(unsigned int minPageSize, unsigned int initialFreePages, unsigned int maxPageSize) :
+region::region(size_t minPageSize, size_t initialFreePages, size_t maxPageSize) :
   minPageSize(minPageSize), maxPageSize(maxPageSize), lastAllocPageSize(minPageSize),
-  usedp(0), freep(0),
-  abortOnOOM(false), maxTotalAllocation(0), totalAllocation(0)
+  abortOnOOM(false), maxTotalAllocation(0), totalAllocation(0), usedp(0), freep(0)
 {
   this->usedp = newpage(0, minPageSize);
 
-  for (unsigned int i = 0; i < initialFreePages; ++i) {
+  for (size_t i = 0; i < initialFreePages; ++i) {
     this->freep = newpage(this->freep, minPageSize);
   }
 }
@@ -25,10 +24,10 @@ region::~region() {
   freepage(this->usedp);
 }
 
-void* region::malloc(unsigned int sz) {
-  unsigned int nr = this->usedp->read + sz;
+void* region::malloc(size_t sz) {
+  size_t nr = this->usedp->read + sz;
   if (nr <= this->usedp->size) {
-    void* result = ((unsigned char*)this->usedp->base) + this->usedp->read;
+    void* result = reinterpret_cast<unsigned char*>(this->usedp->base) + this->usedp->read;
     this->usedp->read = nr;
     return result;
   } else {
@@ -114,7 +113,7 @@ size_t region::wasted() const {
 }
 
 std::string showPage(mempage* p) {
-  return "{sz=" + str::showDataSize(p->size) + ",read=" + str::showDataSize(p->read) + ",base=" + str::from((void*)p->base) + "}";
+  return "{sz=" + str::showDataSize(p->size) + ",read=" + str::showDataSize(p->read) + ",base=" + str::from(reinterpret_cast<void*>(p->base)) + "}";
 }
 
 std::string showPages(mempage* ps) {
@@ -141,7 +140,7 @@ void region::abortAtMemCeiling(size_t maxsz) {
   this->maxTotalAllocation = maxsz;
 }
 
-mempage* region::newpage(mempage* succ, unsigned int sz) {
+mempage* region::newpage(mempage* succ, size_t sz) {
   size_t psz = 0;
   if (this->lastAllocPageSize < this->maxPageSize) {
     psz = std::max(sz, this->lastAllocPageSize);
@@ -166,7 +165,7 @@ mempage* region::newpage(mempage* succ, unsigned int sz) {
   return p;
 }
 
-void region::allocpage(unsigned int sz) {
+void region::allocpage(size_t sz) {
   if (this->freep != 0 && sz <= this->freep->size) {
     // used = head free : used
     mempage* usednp = this->freep;

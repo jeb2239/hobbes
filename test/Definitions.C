@@ -19,7 +19,7 @@ TEST(Definitions, Basic) {
   EXPECT_TRUE(c().compileFn<bool()>("c000.abc == 123")());
 
   EXPECT_EQ(c().compileFn<int()>("defInt")(), 42);
-  EXPECT_EQ(c().compileFn<size_t()>("length(defStrArray)")(), 3);
+  EXPECT_EQ(c().compileFn<size_t()>("length(defStrArray)")(), size_t(3));
   EXPECT_EQ(c().compileFn<int()>("defArray[1]")(), 42);
   EXPECT_TRUE(c().compileFn<bool()>("defStrArray[1] == \"chicken\"")());
   EXPECT_TRUE(c().compileFn<bool()>("defRecord.z >= 41.9999 and defRecord.z <= 42.0001")());
@@ -46,3 +46,15 @@ TEST(Definitions, RecType) {
   EXPECT_TRUE(c().compileFn<bool()>("llen(cons(9L,nil())) == 1L")());
   EXPECT_TRUE(c().compileFn<bool()>("llen(cons(9S,nil())) == 1L")());
 }
+
+TEST(Definitions, FuncAliases) {
+  c().define("f1", "(\\(). 42)::()->int");
+  c().define("f2", "f1");
+  EXPECT_EQ(c().compileFn<int()>("f2()")(), 42)
+}
+
+TEST(Definitions, StructsWithFns) {
+  c().define("prof", "{x=[1,2,3], y=\\().putStrLn(\"hello world\")}");
+  EXPECT_EQ(c().compileFn<int()>("sum(prof.x)")(), 6);
+}
+

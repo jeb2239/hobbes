@@ -11,6 +11,7 @@
 #include <hobbes/lang/typepreds.H>
 #include <hobbes/read/parser.H>
 #include <hobbes/eval/jitcc.H>
+#include <hobbes/eval/search.H>
 
 #include <hobbes/util/func.H>
 #include <hobbes/util/llvm.H>
@@ -81,7 +82,15 @@ public:
 
   typedef ExprPtr (*readExprFn)(cc*, const std::string&);
   ExprPtr readExpr(const std::string&);
+  MonoTypePtr readMonoType(const std::string&);
   void setReadExprFn(readExprFn);
+
+  // search for paths from one type to another
+  // (currently just one-step paths, may be useful to consider multi-step paths)
+  SearchEntries search(const MonoTypePtr&, const MonoTypePtr&);
+  SearchEntries search(const ExprPtr&, const MonoTypePtr&);
+  SearchEntries search(const std::string&, const MonoTypePtr&);
+  SearchEntries search(const std::string&, const std::string&);
 private:
   readModuleFileFn readModuleFileF;
   readModuleFn     readModuleF;
@@ -92,7 +101,7 @@ public:
   template <typename RFn, typename ... NamesAndExpr>
     typename func<RFn>::type compileFn(NamesAndExpr ... args) {
       static_assert(func<RFn>::arity == sizeof...(NamesAndExpr)-1, "Formal parameter list and expected function type arity mismatch");
-      return reinterpret_cast<typename func<RFn>::type>(
+      return rcast<typename func<RFn>::type>(
         unsafeCompileFn(
           lift<RFn>::type(*this),
           PArgl<NamesAndExpr...>::names(args...),
@@ -171,18 +180,18 @@ public:
 
   template <typename T>
     void bind(const std::string& vn, T* x) {
-      bind(generalize(liftValue<T*>::type(*this, x)), vn, reinterpret_cast<void*>(x));
+      bind(generalize(liftValue<T*>::type(*this, x)), vn, rcast<void*>(x));
     }
 
   template <typename T, int N>
     void bindArr(const std::string& vn, T x[N]) {
-      bind(polytype(qualtype(arrayty(lift<T>::type(*this), N))), vn, reinterpret_cast<void*>(x));
+      bind(polytype(qualtype(arrayty(lift<T>::type(*this), N))), vn, rcast<void*>(x));
     }
 
   // simplify binding user functions
   template <typename R, typename ... Args>
     void bind(const std::string& fn, R (*pfn)(Args...)) {
-      bindExternFunction(fn, lift<R(Args...)>::type(*this), (void*)pfn);
+      bindExternFunction(fn, lift<R(Args...)>::type(*this), rcast<void*>(pfn));
     }
 private:
   typedef std::pair<str::seq, MonoTypePtr>        TTyDef;
@@ -221,6 +230,12 @@ public:
   bool requireMatchReachability() const;
   void alwaysLowerPrimMatchTables(bool);
   bool alwaysLowerPrimMatchTables() const;
+  void buildColumnwiseMatches(bool f);
+  bool buildColumnwiseMatches() const;
+  void throwOnHugeRegexDFA(bool f);
+  bool throwOnHugeRegexDFA() const;
+  void regexDFAOverNFAMaxRatio(int f);
+  int  regexDFAOverNFAMaxRatio() const;
 
   // allow caller to gather a vector of unreachable rows arising from match compilation
   UnreachableMatchRowsPtr unreachableMatchRowsPtr;
@@ -231,33 +246,37 @@ public:
   // bind external functions
   void bindExternFunction(const std::string& fname, const MonoTypePtr& fty, void* fn);
 
-  // have we already loaded the standard prelude?
-  // (this is a bit of a hack to avoid some automatic translations that assume prelude functions _within_ the prelude)
-  bool preludeLoaded() const;
+  // allocate global data
+  void* memalloc(size_t);
 private:
-  // the JIT engine that compiles our monotyped expressions
-  jitcc jit;
+  // cache for expression search results
+  SearchCache searchCache;
 
   // optimization options
   bool runModInlinePass;
   bool genInterpretedMatch;
   bool checkMatchReachability;
   bool lowerPrimMatchTables;
+  bool columnwiseMatches;
+
+  // abort compilation of regexes which translate into huge dfa transition states
+  bool shouldThrowOnHugeRegexDFA = false;
+  int  dfaOverNfaMaxRatio        = 4;
 
   // the bound root type-def environment
   TEnvPtr          tenv;
   TypeAliasMap     typeAliases;
-  
+
   PolyTypePtr lookupVarType(const std::string& vname) const;
 
   // global variables
   void definePolyValue(const std::string& vname, const ExprPtr& unsweetExp);
 
-  // the bound root function environment
-  bool booted;
-
   // track C++ object relationships
   ObjsPtr objs;
+
+  // the JIT engine that compiles our monotyped expressions
+  jitcc jit;
 private:
   // disable copying
   cc(const cc&);
@@ -277,7 +296,7 @@ template <typename R, typename ... Args>
   struct rccF<R(*)(Args...)> {
     typedef R (*cbF)(Args...);
     static cbF compile(cc* c, const str::seq& vns, const std::string& expr) {
-      return (cbF)c->unsafeCompileFn(lift<cbF>::type(*c), vns, expr);
+      return rcast<cbF>(c->unsafeCompileFn(lift<cbF>::type(*c), vns, expr));
     }
   };
 

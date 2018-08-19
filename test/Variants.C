@@ -15,12 +15,12 @@ int intCastVariant(const variant<leftCtor, rightCtor>* bv) {
   if (const leftCtor* lv = bv->get<leftCtor>()) {
     return lv->value;
   } else {
-    return (int)(bv->get<rightCtor>()->value);
+    return static_cast<int>(bv->get<rightCtor>()->value);
   }
 }
 
 int sumCtorID(const variant<char, unsigned char>* bv) {
-  if (const char* iv = bv->get<char>()) {
+  if (bv->get<char>()) {
     return 0;
   } else {
     return 1;
@@ -73,15 +73,15 @@ TEST(Variants, MemoryLayout) {
 }
 
 DEFINE_ENUM(Color,
-  (Red,   1),
-  (Green, 2),
-  (Blue,  3)
+  (Red),
+  (Green),
+  (Blue)
 );
 
 TEST(Variants, Enums) {
-  Color red   = Color::Red;
-  Color green = Color::Green;
-  Color blue  = Color::Blue;
+  Color red   = Color::Red();
+  Color green = Color::Green();
+  Color blue  = Color::Blue();
 
   EXPECT_EQ((c().compileFn<int(const Color*)>("x", "case x of |Red=0,Green=1,Blue=2|")(&red)),   0);
   EXPECT_EQ((c().compileFn<int(const Color*)>("x", "case x of |Red=0,Green=1,Blue=2|")(&green)), 1);
@@ -95,5 +95,9 @@ TEST(Variants, WithFunctions) {
 typedef variant<unit, std::pair<const char*, size_t>*> BadT;
 TEST(Variants, DontLiftInlineRefs) {
   EXPECT_NEQ(show(lift<const BadT*>::type(c())), "(() + (<char> * long))");
+}
+
+TEST(Variants, Generic) {
+  EXPECT_TRUE(c().compileFn<bool()>("variantApp(|car=6L|::|car:long,house:[char],dog:double|,{car=toClosure(\\x.x+x*x),house=toClosure(length),dog=toClosure(\\_.0L)}) == 42")());
 }
 

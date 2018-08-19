@@ -13,12 +13,14 @@
 
 #include <map>
 #include <vector>
+#include <array>
 #include <string>
 #include <string.h>
 #include <tuple>
 #include <functional>
 #include <iostream>
 #include <sstream>
+#include <atomic>
 #include <stdexcept>
 #include <stdlib.h>
 #include <stdint.h>
@@ -31,14 +33,45 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <fcntl.h>
 
+namespace hobbes { namespace storage { namespace internal {
+
 // a few things have to be OS-specific here
-//  * waiting in shared memory
+//  * available waiting strategy in shared memory
+//  * default waiting strategy
 #if defined(__APPLE__) && defined(__MACH__)
-namespace hobbes { namespace storage {
+
+// macOS doesn't support this flag to mmap so we can just 0 it out
+#ifndef MAP_POPULATE
+#define MAP_POPULATE 0
+#endif
+
+namespace spin {
+
+#if defined(CLOCK_REALTIME)
+inline long poll_tickNS() {
+  timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+    return ts.tv_sec * 1000000000L + ts.tv_nsec;
+  } else {
+    return 0;
+  }
+}
+#else
+inline long poll_tickNS() {
+  struct timeval t;
+  if (gettimeofday(&t, 0) == 0) {
+    return ((t.tv_sec*1000000)+t.tv_usec)*1000;
+  } else {
+    return 0;
+  }
+}
+#endif
+
 static inline void waitForUpdate(volatile uint32_t* p, int eqV) {
   while (true) {
     for (size_t c = 0; c < 4096; ++c) {
@@ -49,36 +82,177 @@ static inline void waitForUpdate(volatile uint32_t* p, int eqV) {
     usleep(500);
   }
 }
+static inline void waitForUpdate(volatile uint32_t* p, int eqV, size_t timeoutNS, const std::function<void()>& timeoutF) {
+  if (timeoutNS == 0) {
+    waitForUpdate(p, eqV);
+    return;
+  }
+
+  long t0 = poll_tickNS();
+
+  while (true) {
+    for (size_t c = 0; c < 4096; ++c) {
+      if (*p != eqV) {
+        return;
+      }
+    }
+
+    long t1 = poll_tickNS();
+    if ((t1-t0) >= timeoutNS) {
+      timeoutF();
+      t0 = t1;
+    }
+    usleep(500);
+  }
+}
 static inline void wakeN(volatile uint32_t* p, int c) {
   // assume the waiter is polling, nothing to do
 }
-}}
+
+} // namespace spin
 #else
 #include <linux/futex.h>
 #include <sys/syscall.h>
 
-namespace hobbes { namespace storage {
+namespace spin {
+
+#if defined(CLOCK_REALTIME)
+inline long poll_tickNS() {
+  timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+    return ts.tv_sec * 1000000000L + ts.tv_nsec;
+  } else {
+    return 0;
+  }
+}
+#else
+inline long poll_tickNS() {
+  struct timeval t;
+  if (gettimeofday(&t, 0) == 0) {
+    return ((t.tv_sec * 1000000) + t.tv_usec) * 1000;
+  } else {
+    return 0;
+  }
+}
+#endif
+
+static inline void waitForUpdate(volatile uint32_t* p, int eqV) {
+  while (true) {
+    for (size_t c = 0; c < 4096; ++c) {
+      if (*p != uint32_t(eqV)) {
+        return;
+      }
+    }
+  }
+}
+static inline void waitForUpdate(volatile uint32_t* p, int eqV, size_t timeoutNS, const std::function<void()>& timeoutF) {
+  if (timeoutNS == 0) {
+    waitForUpdate(p, eqV);
+    return;
+  }
+
+  long t0 = poll_tickNS();
+
+  while (true) {
+    for (size_t c = 0; c < 4096; ++c) {
+      if (*p != uint32_t(eqV)) {
+        return;
+      }
+    }
+
+    long t1 = poll_tickNS();
+    if ((t1-t0) >= long(timeoutNS)) {
+      timeoutF();
+      t0 = t1;
+    }
+  }
+}
+static inline void wakeN(volatile uint32_t* p, int c) {
+  // assume the waiter is polling, nothing to do
+}
+
+} // namespace spin
+
+namespace futex {
+
 static inline long sys_futex(volatile uint32_t* p, int op, int v, struct timespec* timeout, void* p2, int v2) {
   return syscall(SYS_futex, p, op, v, timeout, p2, v2);
 }
 static inline void waitForUpdate(volatile uint32_t* p, int eqV) {
   sys_futex(p, FUTEX_WAIT, eqV, 0, 0, 0);
 }
+static inline void waitForUpdate(volatile uint32_t* p, int eqV, size_t timeoutNS, const std::function<void()>& timeoutF) {
+  if (timeoutNS == 0) {
+    waitForUpdate(p, eqV);
+    return;
+  }
+
+  struct timespec ts;
+  ts.tv_sec  = timeoutNS / 1000000000L;
+  ts.tv_nsec = timeoutNS % 1000000000L;
+
+  bool c = true;
+  while (c) {
+    int r = sys_futex(p, FUTEX_WAIT, eqV, &ts, 0, 0);
+        c = r < 0 && errno == ETIMEDOUT;
+
+    if (c) {
+      timeoutF();
+    }
+  }
+}
 static inline void wakeN(volatile uint32_t* p, int c) {
   sys_futex(p, FUTEX_WAKE, c, 0, 0, 0);
 }
-}}
+
+} // namespace futex
 #endif
+
+#if defined (__APPLE__) && defined (__MACH__)
+namespace platform = spin;
+#else
+namespace platform = futex;
+#endif
+
+}}}
 
 namespace hobbes { namespace storage {
 
-#define HSTORE_VERSION ((uint32_t)0x00010000)
+typedef void (*WaitFn)(volatile uint32_t*, int, size_t, const std::function<void()>&);
+typedef void (*WakeFn)(volatile uint32_t*, int);
+
+enum WaitPolicy {
+  Platform = 0,
+  Spin,
+};
+
+static inline WaitFn waitFn(const WaitPolicy s) {
+  switch (s) {
+    case Spin: return &internal::spin::waitForUpdate;
+    case Platform:
+    default: return &internal::platform::waitForUpdate;
+  }
+}
+
+static inline WakeFn wakeFn(const WaitPolicy s) {
+  switch (s) {
+    case Spin: return &internal::spin::wakeN;
+    case Platform:
+    default: return &internal::platform::wakeN;
+  }
+}
+
+}}
+
+namespace hobbes { namespace storage {
+
+#define HSTORE_VERSION static_cast<uint32_t>(0x00020000)
 
 typedef std::vector<uint8_t> bytes;
 
 // write transactions into shared memory
-#define _HSTORE_LIKELY(x)   __builtin_expect((x),1)
-#define _HSTORE_UNLIKELY(x) __builtin_expect((x),0)
+#define PRIV_HSTORE_LIKELY(x)   __builtin_expect((x),1)
+#define PRIV_HSTORE_UNLIKELY(x) __builtin_expect((x),0)
 
 template <typename T>
   T align(T x, T m) {
@@ -88,6 +262,14 @@ template <typename T>
       return (1 + (x / m)) * m;
     }
   }
+
+#define PRIV_HSTORE_SPIN_MIN 512
+#define PRIV_HSTORE_SPIN_MAX 524288
+
+static inline unsigned spin(unsigned count) {
+  for (volatile unsigned i = 0; i != count; ++i);
+  return (count << 1);
+}
 
 static inline void uxchg(volatile uint32_t* px, uint32_t nx) {
   __asm__ __volatile__(
@@ -114,6 +296,18 @@ inline void mqwrite(int fd, const uint8_t* x, size_t len) {
   }
 }
 
+inline void mqread(int fd, uint8_t* x, size_t len) {
+  size_t i = 0;
+  while (i < len) {
+    auto ret = read(fd , x + i, len - i);
+    if (ret < 0 && errno != EINTR) {
+      throw std::runtime_error("Couldn't read from socket: " + std::string(strerror(errno)));
+    } else {
+      i += ret;
+    }
+  }
+}
+
 inline int mqconnect(const std::string& fileName) {
   int r = socket(AF_UNIX, SOCK_STREAM, 0);
   if (r == -1) {
@@ -125,7 +319,7 @@ inline int mqconnect(const std::string& fileName) {
   addr.sun_family = AF_UNIX;
   snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", fileName.c_str());
  
-  sockaddr* saddr = (sockaddr*)&addr;
+  sockaddr* saddr = reinterpret_cast<sockaddr*>(&addr);
   size_t    len   = sizeof(addr);
   if (connect(r, saddr, len) == -1) {
     std::string emsg = "Unable to connect socket: " + std::string(strerror(errno));
@@ -143,7 +337,7 @@ inline int mqconnect(const std::string& fileName) {
   }
 
   uint32_t version = HSTORE_VERSION;
-  mqwrite(r, (const uint8_t*)&version, sizeof(version));
+  mqwrite(r, reinterpret_cast<const uint8_t*>(&version), sizeof(version));
   return r;
 }
 
@@ -159,7 +353,7 @@ inline int mqlisten(const std::string& fileName) {
   unlink(fileName.c_str());
   snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", fileName.c_str());
 
-  if (bind(s, (sockaddr*)&addr, sizeof(addr)) == -1) {
+  if (bind(s, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == -1) {
     std::string emsg = "Unable to bind socket to file: " + fileName + " (" + std::string(strerror(errno)) + ")";
     close(s);
     throw std::runtime_error(emsg);
@@ -175,8 +369,13 @@ inline int mqlisten(const std::string& fileName) {
   return s;
 }
 
-inline std::string tempDir() {
+inline std::string defaultStoreDir() {
   const char* td = 0;
+  if ((td = ::getenv("HOBBES_STORE_DIR"))) {
+    if (::strlen(td) > 0 && ::access(td, W_OK) == 0) {
+      return std::string(td);
+    }
+  }
   if ((td = ::getenv("TMPDIR"))) {
     if (::strlen(td) > 0 && ::access(td, W_OK) == 0) {
       return std::string(td);
@@ -193,12 +392,22 @@ inline std::string tempDir() {
   return "/tmp";
 }
 
-inline int connectGroupHost(const std::string& groupName) {
-  return mqconnect(tempDir() + "/hstore." + groupName + ".sk");
+inline int connectGroupHost(const std::string& groupName, const std::string& sdir = defaultStoreDir()) {
+  auto sp = sdir + "/hstore." + groupName + ".sk";
+  try {
+    return mqconnect(sp);
+  } catch (std::exception& e) {
+    throw std::runtime_error("Failed to connect to log consumer for group '" + groupName + "' on socket '" + sp + "' (" + std::string(e.what()) + ")");
+  }
 }
 
-inline int makeGroupHost(const std::string& groupName) {
-  return mqlisten(tempDir() + "/hstore." + groupName + ".sk");
+inline int makeGroupHost(const std::string& groupName, const std::string& sdir = defaultStoreDir()) {
+  auto sp = sdir + "/hstore." + groupName + ".sk";
+  try {
+    return mqlisten(sp);
+  } catch (std::exception& e) {
+    throw std::runtime_error("Failed to listen for log connections for group '" + groupName + "' on socket '" + sp + "' (" + std::string(e.what()) + ")");
+  }
 }
 
 // identify this process/thread
@@ -206,11 +415,11 @@ typedef std::pair<uint64_t, uint64_t> ProcThread;
 
 inline ProcThread thisProcThread() {
   ProcThread r;
-  r.first = (uint64_t)getpid();
+  r.first = static_cast<uint64_t>(getpid());
 #if defined(__APPLE__) && defined(__MACH__)
   pthread_threadid_np(0, &r.second);
 #else
-  r.second = (uint64_t)syscall(SYS_gettid);
+  r.second = static_cast<uint64_t>(syscall(SYS_gettid));
 #endif
   return r;
 }
@@ -226,25 +435,57 @@ inline std::string sharedMemName(const std::string& groupName) {
 }
 
 // register the allocation of a shared memory region with this group name in this thread/process
-inline void registerSHMAlloc(int* mqserver, const std::string& groupName) {
+inline void registerSHMAlloc(int* mqserver, const char* groupName, const WaitPolicy wp, bool reconnect = false) {
   if (*mqserver < 0) {
     *mqserver = connectGroupHost(groupName);
   }
 
   ProcThread pt = thisProcThread();
-  uint8_t msg[1+sizeof(ProcThread)];
-  msg[0] = 0;
+  uint8_t msg[1+sizeof(ProcThread)] = {0};
+  uint8_t& cmd = msg[0];
+  cmd |= reconnect ? 1 : 0;
+  cmd |= static_cast<uint8_t>(wp) << 1;
   memcpy(msg+1, &pt, sizeof(ProcThread));
   mqwrite(*mqserver, msg, sizeof(msg));
+}
+
+inline void reconnectSHM(int* mqserver, const char* groupName, const WaitPolicy wp) {
+  // has the other side disconnected?
+  if (*mqserver >= 0) {
+    fd_set rd;
+    FD_ZERO(&rd);
+    FD_SET(*mqserver, &rd);
+
+    timeval tmout;
+    tmout.tv_sec = 0;
+    tmout.tv_usec = 1;
+
+    auto sr = select(*mqserver+1, &rd, 0, 0, &tmout);
+    if (sr == 1) {
+      char b=0;
+      if (recv(*mqserver, &b, 1, MSG_PEEK) == 0) {
+        close(*mqserver);
+        *mqserver = -1;
+      }
+    }
+  }
+
+  // if we're in a disconnected state, try once to reconnect
+  if (*mqserver < 0) {
+    try {
+      registerSHMAlloc(mqserver, groupName, wp, true);
+    } catch (std::exception& ex) {
+    }
+  }
 }
 
 // between queue readers and writers, there are only three states of concern:
 //   0: both reader and writer are making progress
 //   1: the reader is blocked waiting for new values (empty queue)
 //   2: the writer is blocked waiting for the reader to catch up (full queue)
-#define _HSTORE_STATE_UNBLOCKED      0
-#define _HSTORE_STATE_READER_WAITING 1
-#define _HSTORE_STATE_WRITER_WAITING 2
+#define PRIV_HSTORE_STATE_UNBLOCKED      0
+#define PRIV_HSTORE_STATE_READER_WAITING 1
+#define PRIV_HSTORE_STATE_WRITER_WAITING 2
 
 struct pqueue_config {
   pqueue_config() :
@@ -285,6 +526,8 @@ private:
   std::string   shmname;
   int           shmfd;
   pqueue_config cfg;
+  WaitFn        waitFn;
+  WakeFn        wakeFn;
 
   inline volatile uint32_t* waitState()                     const { return this->cfg.wstate; }
   inline volatile uint32_t* readIndex()                     const { return this->cfg.readerIndex; }
@@ -292,7 +535,7 @@ private:
   inline uint8_t*           value(size_t i)                 const { return this->cfg.data + (i*this->cfg.valuesz); }
   inline uint32_t           nextIndex(volatile uint32_t* i) const { return (*i + 1) % this->cfg.count; }
 public:
-  writer(const bytes& meta, const std::string& shmname, size_t qvalsz, size_t count) {
+  writer(const bytes& meta, const std::string& shmname, size_t qvalsz, size_t count, const WaitPolicy wp) : waitFn(hobbes::storage::waitFn(wp)), wakeFn(hobbes::storage::wakeFn(wp)) {
     shm_unlink(shmname.c_str());
 
     // sections of shared memory should be aligned to page boundaries
@@ -318,13 +561,13 @@ public:
       throw std::runtime_error("Failed to truncate shared memory for '" + shmname + "': " + strerror(errno));
     }
   
-    uint8_t* mem = (uint8_t*)mmap(0, memLen, PROT_READ | PROT_WRITE, MAP_SHARED, shfd, 0);
+    uint8_t* mem = reinterpret_cast<uint8_t*>(mmap(0, memLen, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, shfd, 0));
     if (mem == MAP_FAILED) {
       throw std::runtime_error("Failed to map bytes out of shared memory for '" + shmname + "': " + strerror(errno));
     }
   
     // write meta data
-    ShQueueHeader* hdr = (ShQueueHeader*)mem;
+    ShQueueHeader* hdr = reinterpret_cast<ShQueueHeader*>(mem);
     hdr->valsz  = qvalsz;
     hdr->count  = count;
     hdr->metasz = meta.size();
@@ -334,7 +577,7 @@ public:
     uxchg(&hdr->ready, 1);
   
     // now make this pqueue config
-    ShQueueData* sqd = (ShQueueData*)(mem + metaLen);
+    ShQueueData* sqd = reinterpret_cast<ShQueueData*>(mem + metaLen);
   
     this->shmname = shmname;
     this->shmfd   = shfd;
@@ -352,33 +595,40 @@ public:
 
   inline const pqueue_config& config() const { return this->cfg; }
 
-  uint8_t* next() {
+  uint8_t* next(size_t timeoutNS = 0, const std::function<void()>& timeoutF = [](){}) {
     uint32_t nwi = nextIndex(writeIndex());
+
+    unsigned count = PRIV_HSTORE_SPIN_MIN;
   
-    while (_HSTORE_UNLIKELY(*readIndex() == nwi)) {
-      // the reader is behind and we've caught up with it, switch into writer-wait mode
-      switch (xchg(waitState(), _HSTORE_STATE_WRITER_WAITING)) {
-      case _HSTORE_STATE_UNBLOCKED:
-        // we previously were unblocked
-        // make sure that we still need to block the writer (in case the read index moved while we were getting here)
-        // then block while we're in writer-wait state
-        if (*readIndex() == nwi) {
-          waitForUpdate(waitState(), _HSTORE_STATE_WRITER_WAITING);
+    while (PRIV_HSTORE_UNLIKELY(*readIndex() == nwi)) {
+      if (count < PRIV_HSTORE_SPIN_MAX) {
+        // back-off the writer
+        count = spin(count);
+      } else {
+        // the reader is behind and we've caught up with it, switch into writer-wait mode
+        switch (xchg(waitState(), PRIV_HSTORE_STATE_WRITER_WAITING)) {
+          case PRIV_HSTORE_STATE_UNBLOCKED:
+            // we previously were unblocked
+            // make sure that we still need to block the writer (in case the read index moved while we were getting here)
+            // then block while we're in writer-wait state
+            if (*readIndex() == nwi) {
+              (*waitFn)(waitState(), PRIV_HSTORE_STATE_WRITER_WAITING, timeoutNS, timeoutF);
+            }
+            break;
+          case PRIV_HSTORE_STATE_READER_WAITING:
+            // we previously were in reader-wait state (this should practically never happen)
+            // since we wait to write anyway, unblock the reader and try again
+            uxchg(waitState(), PRIV_HSTORE_STATE_UNBLOCKED);
+            (*wakeFn)(waitState(), 1);
+            break;
         }
-        break;
-      case _HSTORE_STATE_READER_WAITING:
-        // we previously were in reader-wait state (this should practically never happen)
-        // since we wait to write anyway, unblock the reader and try again
-        uxchg(waitState(), _HSTORE_STATE_UNBLOCKED);
-        wakeN(waitState(), 1);
-        break;
       }
     }
     return value(*writeIndex());
   }
   
   uint8_t* pollNext() {
-    if (_HSTORE_UNLIKELY(*readIndex() == nextIndex(writeIndex()))) {
+    if (PRIV_HSTORE_UNLIKELY(*readIndex() == nextIndex(writeIndex()))) {
       return 0;
     } else {
       return value(*writeIndex());
@@ -389,8 +639,8 @@ public:
     uxchg(writeIndex(), nextIndex(writeIndex()));
   
     // when the writer advances, the reader can be unblocked
-    if (_HSTORE_UNLIKELY(xchg(waitState(), _HSTORE_STATE_UNBLOCKED) == _HSTORE_STATE_READER_WAITING)) {
-      wakeN(waitState(), 1);
+    if (PRIV_HSTORE_UNLIKELY(xchg(waitState(), PRIV_HSTORE_STATE_UNBLOCKED) == PRIV_HSTORE_STATE_READER_WAITING)) {
+      (*wakeFn)(waitState(), 1);
     }
   }
 };
@@ -400,10 +650,10 @@ public:
 //   2) page is a continuation of its transaction (intermediate in the total transaction)
 //   3) page successfully terminates the transaction (commit)
 //   4) page prematurely terminates the transaction (rollback)
-#define _HSTORE_PAGE_STATE_TENTATIVE ((uint8_t)0)
-#define _HSTORE_PAGE_STATE_CONT      ((uint8_t)1)
-#define _HSTORE_PAGE_STATE_COMMIT    ((uint8_t)2)
-#define _HSTORE_PAGE_STATE_ROLLBACK  ((uint8_t)3)
+#define PRIV_HSTORE_PAGE_STATE_TENTATIVE static_cast<uint8_t>(0)
+#define PRIV_HSTORE_PAGE_STATE_CONT      static_cast<uint8_t>(1)
+#define PRIV_HSTORE_PAGE_STATE_COMMIT    static_cast<uint8_t>(2)
+#define PRIV_HSTORE_PAGE_STATE_ROLLBACK  static_cast<uint8_t>(3)
 
 // writers may record data 'unreliably' (non-blocking) or 'reliably' (block iff waiting for consumer to catch up)
 enum PipeQOS {
@@ -414,14 +664,17 @@ enum PipeQOS {
 // wpipe : a "write pipe" (to write an 'arbitrary-length' sequence of data) on top of writers
 class wpipe {
 private:
-  writer*         wq;
-  uint8_t*        page;
-  size_t          pagesz;
-  uint32_t        offset;
-  PipeQOS         qos;
+  writer*               wq;
+  uint8_t*              page;
+  size_t                pagesz;
+  uint32_t              offset;
+  PipeQOS               qos;
+  size_t                timeoutNS;
+  std::function<void()> timeoutF;
+  size_t                unrtimeNS;
 
   void markPage(uint8_t c) {
-    *((uint32_t*)(this->page + this->pagesz)) = (((uint32_t)c) << 24) | this->offset;
+    *reinterpret_cast<uint32_t*>(this->page + this->pagesz) = (static_cast<uint32_t>(c) << 24) | this->offset;
   }
 
   inline bool reliable() const {
@@ -430,17 +683,17 @@ private:
 
   bool stepPage() {
     if (reliable()) {
-      markPage(_HSTORE_PAGE_STATE_CONT);
+      markPage(PRIV_HSTORE_PAGE_STATE_CONT);
       this->wq->push();
 
-      this->page   = this->wq->next();
+      this->page   = this->wq->next(this->timeoutNS, this->timeoutF);
       this->offset = 0;
       return true;
     } else {
-      markPage(_HSTORE_PAGE_STATE_TENTATIVE);
+      markPage(PRIV_HSTORE_PAGE_STATE_TENTATIVE);
       this->wq->push();
       uint8_t* npage = this->wq->pollNext();
-      markPage(npage ? _HSTORE_PAGE_STATE_CONT : _HSTORE_PAGE_STATE_ROLLBACK);
+      markPage(npage ? PRIV_HSTORE_PAGE_STATE_CONT : PRIV_HSTORE_PAGE_STATE_ROLLBACK);
 
       this->page   = npage;
       this->offset = 0;
@@ -448,7 +701,7 @@ private:
     }
   }
 public:
-  wpipe(writer* wq, PipeQOS qos = Reliable) : wq(wq), pagesz(wq->config().valuesz - sizeof(uint32_t)), offset(0), qos(qos) {
+  wpipe(writer* wq, PipeQOS qos = Reliable, size_t timeoutNS = 0, const std::function<void()>& timeoutF = [](){}) : wq(wq), pagesz(wq->config().valuesz - sizeof(uint32_t)), offset(0), qos(qos), timeoutNS(timeoutNS), timeoutF(timeoutF), unrtimeNS(0) {
     if (wq->config().valuesz <= sizeof(uint32_t)) {
       throw std::runtime_error("queue page size too small for use as shared memory pipe");
     }
@@ -456,11 +709,36 @@ public:
   }
 
   void commit() {
-    if (_HSTORE_LIKELY(this->page != 0)) {
-      markPage(_HSTORE_PAGE_STATE_COMMIT);
+    if (reliable()) {
+      markPage(PRIV_HSTORE_PAGE_STATE_COMMIT);
+      this->wq->push();
+      this->page = this->wq->next(this->timeoutNS, this->timeoutF);
+    } else {
+      if (PRIV_HSTORE_LIKELY(this->page != 0)) {
+        markPage(PRIV_HSTORE_PAGE_STATE_COMMIT);
+        this->wq->push();
+      }
+      this->page = this->wq->pollNext();
+
+      // allow unreliable producers to process timeout events
+      if (PRIV_HSTORE_UNLIKELY(this->page == 0)) {
+        if (this->unrtimeNS == 0) {
+          this->unrtimeNS = internal::spin::poll_tickNS();
+        } else if (internal::spin::poll_tickNS() - this->unrtimeNS >= this->timeoutNS) {
+          this->timeoutF();
+          this->unrtimeNS = 0;
+        }
+      }
+    }
+    this->offset = 0;
+  }
+
+  void rollback() {
+    if (PRIV_HSTORE_LIKELY(this->page != 0)) {
+      markPage(PRIV_HSTORE_PAGE_STATE_ROLLBACK);
       this->wq->push();
     }
-    this->page   = reliable() ? this->wq->next() : this->wq->pollNext();
+    this->page   = reliable() ? this->wq->next(this->timeoutNS, this->timeoutF) : this->wq->pollNext();
     this->offset = 0;
   }
 
@@ -471,14 +749,14 @@ public:
   // write a block of bytes within a frame
   bool write(const uint8_t* src, size_t sz) {
     // just for unreliable pipes, we might enter here without a page
-    if (_HSTORE_UNLIKELY(!this->page)) {
+    if (PRIV_HSTORE_UNLIKELY(!this->page)) {
       return false;
     }
 
     size_t remsz = this->pagesz - this->offset;
 
     // most of the time we'll be writing small chunks of data
-    if (_HSTORE_LIKELY(sz < remsz)) {
+    if (PRIV_HSTORE_LIKELY(sz < remsz)) {
       memcpy(this->page + this->offset, src, sz);
       this->offset += sz;
       return true;
@@ -509,10 +787,11 @@ public:
 };
 
 struct QueueConnection {
-  int      shfd;
-  uint8_t* data;
-  size_t   datasz;
-  size_t   pagesz;
+  int         shfd;
+  uint8_t*    data;
+  size_t      datasz;
+  size_t      pagesz;
+  std::string shmname;
 };
 
 inline QueueConnection consumeQueue(const std::string& shmname) {
@@ -540,26 +819,24 @@ inline QueueConnection consumeQueue(const std::string& shmname) {
   }
 
   // map memory for this data, ensure it is in a good state
-  uint8_t* mem = (uint8_t*)mmap(0, msb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, shfd, 0);
+  uint8_t* mem = reinterpret_cast<uint8_t*>(mmap(0, msb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, shfd, 0));
   if (mem == MAP_FAILED) {
     close(shfd);
     throw std::runtime_error("Failed to map bytes out of shared memory for '" + shmname + "': " + strerror(errno));
   }
 
-  if (!((ShQueueHeader*)mem)->ready) {
+  if (!reinterpret_cast<ShQueueHeader*>(mem)->ready) {
     munmap(mem, msb.st_size);
     close(shfd);
     throw std::runtime_error("Not ready to consume shared memory for '" + shmname + "'");
   }
 
-  // ok, if we get here then we can take ownership of the queue (hence unlink it)
-  shm_unlink(shmname.c_str());
-
   QueueConnection c;
-  c.shfd   = shfd;
-  c.data   = mem;
-  c.datasz = msb.st_size;
-  c.pagesz = pagesz;
+  c.shfd    = shfd;
+  c.data    = mem;
+  c.datasz  = msb.st_size;
+  c.pagesz  = pagesz;
+  c.shmname = shmname;
   return c;
 }
 
@@ -574,6 +851,8 @@ private:
   const uint8_t* metad;
   size_t         metasz;
   pqueue_config  cfg;
+  WaitFn         waitFn;
+  WakeFn         wakeFn;
 
   inline volatile uint32_t* waitState()                     const { return this->cfg.wstate; }
   inline volatile uint32_t* readIndex()                     const { return this->cfg.readerIndex; }
@@ -581,11 +860,11 @@ private:
   inline uint8_t*           value(size_t i)                 const { return this->cfg.data + (i*this->cfg.valuesz); }
   inline uint32_t           nextIndex(volatile uint32_t* i) const { return (*i + 1) % this->cfg.count; }
 public:
-  reader(const QueueConnection& qc) : shfd(qc.shfd) {
+  reader(const QueueConnection& qc, const WaitPolicy wp) : shfd(qc.shfd), waitFn(hobbes::storage::waitFn(wp)), wakeFn(hobbes::storage::wakeFn(wp)) {
     // prepare to read the queue description
-    ShQueueHeader* hdr     = (ShQueueHeader*)qc.data;
+    ShQueueHeader* hdr     = reinterpret_cast<ShQueueHeader*>(qc.data);
     size_t         metaLen = align<size_t>(sizeof(ShQueueHeader) + hdr->metasz, qc.pagesz);
-    ShQueueData*   sqd     = (ShQueueData*)(qc.data + metaLen);
+    ShQueueData*   sqd     = reinterpret_cast<ShQueueData*>(qc.data + metaLen);
 
     // now we should have enough to read out of this queue
     this->metad           = qc.data + sizeof(ShQueueHeader);
@@ -611,26 +890,33 @@ public:
   }
 
   // get the next value in the queue, blocking if necessary
-  uint8_t* next() {
+  uint8_t* next(size_t timeoutNS, const std::function<void()>& timeoutF) {
     uint32_t ri = *readIndex();
+
+    unsigned count = PRIV_HSTORE_SPIN_MIN;
   
-    while (_HSTORE_UNLIKELY(*writeIndex() == ri)) {
-      // there's nothing to read, switch into reader-wait mode
-      switch (xchg(waitState(), _HSTORE_STATE_READER_WAITING)) {
-      case _HSTORE_STATE_UNBLOCKED:
-        // we previously were unblocked
-        // make sure that we still need to block the reader (in case the write index moved while we were getting here)
-        // then block while we're in reader-wait state
-        if (*writeIndex() == ri) {
-          waitForUpdate(waitState(), _HSTORE_STATE_READER_WAITING);
+    while (PRIV_HSTORE_UNLIKELY(*writeIndex() == ri)) {
+      if (count < PRIV_HSTORE_SPIN_MAX) {
+        // try back-off the reader
+        count = spin(count);
+      } else {
+        // there's nothing to read, switch into reader-wait mode
+        switch (xchg(waitState(), PRIV_HSTORE_STATE_READER_WAITING)) {
+          case PRIV_HSTORE_STATE_UNBLOCKED:
+            // we previously were unblocked
+            // make sure that we still need to block the reader (in case the write index moved while we were getting here)
+            // then block while we're in reader-wait state
+            if (*writeIndex() == ri) {
+              (*waitFn)(waitState(), PRIV_HSTORE_STATE_READER_WAITING, timeoutNS, timeoutF);
+            }
+            break;
+          case PRIV_HSTORE_STATE_WRITER_WAITING:
+            // we previously were in writer-wait state (this should practically never happen)
+            // since we wait to read anyway, unblock the writer and try again
+            uxchg(waitState(), PRIV_HSTORE_STATE_UNBLOCKED);
+            (*wakeFn)(waitState(), 1);
+            break;
         }
-        break;
-      case _HSTORE_STATE_WRITER_WAITING:
-        // we previously were in writer-wait state (this should practically never happen)
-        // since we wait to read anyway, unblock the writer and try again
-        uxchg(waitState(), _HSTORE_STATE_UNBLOCKED);
-        wakeN(waitState(), 1);
-        break;
       }
     }
     return value(*readIndex());
@@ -638,7 +924,7 @@ public:
 
   // get the next value in the queue if one is present, else null
   uint8_t* pollNext() {
-    if (_HSTORE_UNLIKELY(*writeIndex() == *readIndex())) {
+    if (PRIV_HSTORE_UNLIKELY(*writeIndex() == *readIndex())) {
       return 0;
     } else {
       return value(*readIndex());
@@ -650,8 +936,8 @@ public:
     uxchg(readIndex(), nextIndex(readIndex()));
   
     // when the reader advances, the writer can be unblocked
-    if (_HSTORE_UNLIKELY(xchg(waitState(), _HSTORE_STATE_UNBLOCKED) == _HSTORE_STATE_WRITER_WAITING)) {
-      wakeN(waitState(), 1);
+    if (PRIV_HSTORE_UNLIKELY(xchg(waitState(), PRIV_HSTORE_STATE_UNBLOCKED) == PRIV_HSTORE_STATE_WRITER_WAITING)) {
+      (*wakeFn)(waitState(), 1);
     }
   }
 };
@@ -671,19 +957,19 @@ public:
   }
 
   // read a range of bytes out of the 'pipe' into a user-supplied buffer
-  size_t read(uint8_t* dst, size_t sz, uint8_t* state) {
+  size_t read(uint8_t* dst, size_t sz, uint8_t* state, size_t timeoutNS, const std::function<void()>& timeoutF) {
     if (!this->page) {
-      this->page = this->rq->next();
+      this->page = this->rq->next(timeoutNS, timeoutF);
     }
   
     size_t doff = 0;
   
     while (sz != 0 && this->page) {
       // how much can we copy out of the current page into the dest buffer?
-      volatile uint32_t* pend      = (uint32_t*)(this->page + this->pagesz);
-      size_t             rpagesz   = *pend & ~(0xFF << 24);
-      size_t             availPage = rpagesz - this->offset;
-      size_t             csz       = (sz < availPage) ? sz : availPage;
+      const volatile uint32_t* pend      = reinterpret_cast<const uint32_t*>(this->page + this->pagesz);
+      size_t                   rpagesz   = *pend & ~(0xFF << 24);
+      size_t                   availPage = rpagesz - this->offset;
+      size_t                   csz       = (sz < availPage) ? sz : availPage;
   
       // copy as much as we can
       memcpy(dst + doff, this->page + this->offset, csz);
@@ -696,14 +982,14 @@ public:
       // if we've hit the end of the page, mark it done and then try for the next one
       if (this->offset == rpagesz) {
         // wait for the producer to decide what state the page is in
-        while ((*pend >> 24) == _HSTORE_PAGE_STATE_TENTATIVE);
+        while ((*pend >> 24) == PRIV_HSTORE_PAGE_STATE_TENTATIVE);
         uint8_t ps = *pend >> 24;
         if (state) *state = ps;
 
         // if this page is just a continuation, continue reading
         // else we've terminated a transaction
         this->rq->pop();
-        this->page   = (ps == _HSTORE_PAGE_STATE_CONT) ? this->rq->pollNext() : 0;
+        this->page   = (ps == PRIV_HSTORE_PAGE_STATE_CONT) ? this->rq->pollNext() : 0;
         this->offset = 0;
       }
     }
@@ -712,22 +998,53 @@ public:
   }
 };
 
+// basic compile-time strings
+template <size_t N>
+  constexpr char at(size_t i, const char (&s)[N]) {
+    return (i < N) ? s[i] : '\0';
+  }
+template <size_t N>
+  constexpr size_t at8S(size_t i, size_t k, const char (&s)[N]) {
+    return (k==8) ? 0 : ((static_cast<size_t>(at(i+k,s))<<(8*k))|at8S(i,k+1,s));
+  }
+template <size_t N>
+  constexpr size_t at8(size_t i, const char (&s)[N]) {
+    return at8S(i, 0, s);
+  }
+template <size_t... pcs>
+  struct strpack {
+    static const char* str() {
+      constexpr size_t msg[] = {pcs...};
+      static_assert(msg[(sizeof(msg)/sizeof(msg[0]))-1] == 0, "compile-time string larger than internal max limit (this limit can be bumped in storage.H)");
+
+      static const size_t smsg[] = {pcs...};
+      return reinterpret_cast<const char*>(smsg);
+    }
+  };
+#define PRIV_HSTORE_TSTR32(i,s)   ::hobbes::storage::at8(i+(8*0),s),::hobbes::storage::at8(i+(8*1),s),::hobbes::storage::at8(i+(8*2),s),::hobbes::storage::at8(i+(8*3),s)
+#define PRIV_HSTORE_TSTR128(i,s)  PRIV_HSTORE_TSTR32(i+(32*0),s),PRIV_HSTORE_TSTR32(i+(32*1),s),PRIV_HSTORE_TSTR32(i+(32*2),s),PRIV_HSTORE_TSTR32(i+(32*3),s)
+#define PRIV_HSTORE_TSTR512(i,s)  PRIV_HSTORE_TSTR128(i+(128*0),s),PRIV_HSTORE_TSTR128(i+(128*1),s),PRIV_HSTORE_TSTR128(i+(128*2),s),PRIV_HSTORE_TSTR128(i+(128*3),s)
+#define PRIV_HSTORE_TSTR1024(i,s) PRIV_HSTORE_TSTR512(i+(512*0),s),PRIV_HSTORE_TSTR512(i+(512*1),s)
+#define PRIV_HSTORE_TSTR(s)       ::hobbes::storage::strpack<PRIV_HSTORE_TSTR1024(0,s)>
+
 // type/value serialization (guarded by compile-time predicates)
-#define _HSTORE_TYCTOR_PRIM      ((int)0)
-#define _HSTORE_TYCTOR_TVAR      ((int)2)
-#define _HSTORE_TYCTOR_FIXEDARR  ((int)4)
-#define _HSTORE_TYCTOR_ARR       ((int)5)
-#define _HSTORE_TYCTOR_VARIANT   ((int)6)
-#define _HSTORE_TYCTOR_STRUCT    ((int)7)
-#define _HSTORE_TYCTOR_SIZE      ((int)11)
-#define _HSTORE_TYCTOR_RECURSIVE ((int)13)
+#define PRIV_HSTORE_TYCTOR_PRIM      static_cast<int>(0)
+#define PRIV_HSTORE_TYCTOR_TVAR      static_cast<int>(2)
+#define PRIV_HSTORE_TYCTOR_FIXEDARR  static_cast<int>(4)
+#define PRIV_HSTORE_TYCTOR_ARR       static_cast<int>(5)
+#define PRIV_HSTORE_TYCTOR_VARIANT   static_cast<int>(6)
+#define PRIV_HSTORE_TYCTOR_STRUCT    static_cast<int>(7)
+#define PRIV_HSTORE_TYCTOR_SIZE      static_cast<int>(11)
+#define PRIV_HSTORE_TYCTOR_TAPP      static_cast<int>(12)
+#define PRIV_HSTORE_TYCTOR_RECURSIVE static_cast<int>(13)
+#define PRIV_HSTORE_TYCTOR_TABS      static_cast<int>(15)
 
 template <typename T, typename P = void>
   struct store {
   };
 template <typename T>
   void w(const T& x, bytes* out) {
-    out->insert(out->end(), (uint8_t*)&x, ((uint8_t*)&x) + sizeof(x));
+    out->insert(out->end(), reinterpret_cast<const uint8_t*>(&x), reinterpret_cast<const uint8_t*>(&x) + sizeof(x));
   }
 inline void ws(const char* x, bytes* out) {
   size_t n = strlen(x);
@@ -735,43 +1052,43 @@ inline void ws(const char* x, bytes* out) {
   out->insert(out->end(), x, x + n);
 }
 inline void ws(const std::string& x, bytes* out) {
-  w((size_t)x.size(), out);
+  w(static_cast<size_t>(x.size()), out);
   out->insert(out->end(), x.begin(), x.end());
 }
 inline void ws(const bytes& x, bytes* out) {
-  w((size_t)x.size(), out);
+  w(static_cast<size_t>(x.size()), out);
   out->insert(out->end(), x.begin(), x.end());
 }
 
 inline void encode_primty(const char* tn, bytes* out) {
-  w(_HSTORE_TYCTOR_PRIM, out);
+  w(PRIV_HSTORE_TYCTOR_PRIM, out);
   ws(tn, out);
-  w((bool)false, out);
+  w(false, out);
 }
-#define _HSTORE_DEFINE_PRIMTYS(T, n) \
+#define PRIV_HSTORE_DEFINE_PRIMTYS(T, n) \
   template <> \
     struct store<T> { \
       typedef void can_memcpy; \
       static void        encode(bytes* out)          { encode_primty(n, out); } \
       static std::string describe()                  { return n; } \
       static size_t      size(const T&)              { return sizeof(T); } \
-      static bool        write(wpipe& p, const T& x) { return p.write((const uint8_t*)&x, sizeof(x)); } \
+      static bool        write(wpipe& p, const T& x) { return p.write(reinterpret_cast<const uint8_t*>(&x), sizeof(x)); } \
     }
 
-_HSTORE_DEFINE_PRIMTYS(bool,     "bool");
-_HSTORE_DEFINE_PRIMTYS(uint8_t,  "byte");
-_HSTORE_DEFINE_PRIMTYS(char,     "char");
-_HSTORE_DEFINE_PRIMTYS(int16_t,  "short");
-_HSTORE_DEFINE_PRIMTYS(uint16_t, "short");
-_HSTORE_DEFINE_PRIMTYS(int32_t,  "int");
-_HSTORE_DEFINE_PRIMTYS(uint32_t, "int");
-_HSTORE_DEFINE_PRIMTYS(int64_t,  "long");
-_HSTORE_DEFINE_PRIMTYS(uint64_t, "long");
-#ifdef __clang__
-_HSTORE_DEFINE_PRIMTYS(size_t, "long");
+PRIV_HSTORE_DEFINE_PRIMTYS(bool,     "bool");
+PRIV_HSTORE_DEFINE_PRIMTYS(uint8_t,  "byte");
+PRIV_HSTORE_DEFINE_PRIMTYS(char,     "char");
+PRIV_HSTORE_DEFINE_PRIMTYS(int16_t,  "short");
+PRIV_HSTORE_DEFINE_PRIMTYS(uint16_t, "short");
+PRIV_HSTORE_DEFINE_PRIMTYS(int32_t,  "int");
+PRIV_HSTORE_DEFINE_PRIMTYS(uint32_t, "int");
+PRIV_HSTORE_DEFINE_PRIMTYS(int64_t,  "long");
+PRIV_HSTORE_DEFINE_PRIMTYS(uint64_t, "long");
+#if defined(__APPLE__) && defined(__MACH__)
+PRIV_HSTORE_DEFINE_PRIMTYS(size_t, "long");
 #endif
-_HSTORE_DEFINE_PRIMTYS(float,    "float");
-_HSTORE_DEFINE_PRIMTYS(double,   "double");
+PRIV_HSTORE_DEFINE_PRIMTYS(float,    "float");
+PRIV_HSTORE_DEFINE_PRIMTYS(double,   "double");
 
 template <typename T, typename P = void>
   struct cannot_memcpy {
@@ -795,9 +1112,9 @@ template <typename T, typename ... Ts>
 
     static void encode(size_t f, bytes* out) {
       char fn[32];
-      snprintf(fn, sizeof(fn), ".f%lld", (unsigned long long)f);
+      snprintf(fn, sizeof(fn), ".f%lld", static_cast<unsigned long long>(f));
       ws(fn, out);
-      w((int)-1, out);
+      w(static_cast<int>(-1), out);
       store<T>::encode(out);
 
       store_tuple_types<Ts...>::encode(f+1, out);
@@ -840,7 +1157,7 @@ template <typename ... Ts>
       size_t localArity = arity; // required because 'arity' doesn't have an address
 
       if (localArity > 0) {
-        w(_HSTORE_TYCTOR_STRUCT, out);
+        w(PRIV_HSTORE_TYCTOR_STRUCT, out);
         w(localArity, out);
         store_tuple_types<Ts...>::encode(0, out);
       } else {
@@ -860,73 +1177,85 @@ template <typename ... Ts>
   };
 
 // very basic macro metaprogramming
-#define _HSTORE_FIRST(a, ...) a
-#define _HSTORE_SECOND(a, b, ...) b
-#define _HSTORE_JOIN(a,b) a ## b
-#define _HSTORE_IS_NEGATE(...) _HSTORE_SECOND(__VA_ARGS__, 0)
-#define _HSTORE_NOT(x) _HSTORE_IS_NEGATE(_HSTORE_JOIN(_HSTORE__NOT_, x))
-#define _HSTORE__NOT_0 NEGATE, 1
-#define _HSTORE_BOOL(x) _HSTORE_NOT(_HSTORE_NOT(x))
-#define _HSTORE_IF_ELSE(condition) _HSTORE__IF_ELSE(_HSTORE_BOOL(condition))
-#define _HSTORE__IF_ELSE(condition) _HSTORE_JOIN(_HSTORE__IF_, condition)
-#define _HSTORE__IF_1(...) __VA_ARGS__ _HSTORE__IF_1_ELSE
-#define _HSTORE__IF_0(...)             _HSTORE__IF_0_ELSE
-#define _HSTORE__IF_1_ELSE(...)
-#define _HSTORE__IF_0_ELSE(...) __VA_ARGS__
-#define _HSTORE_EMPTY()
-#define _HSTORE_EVAL(...) _HSTORE_EVAL256(__VA_ARGS__)
-#define _HSTORE_EVAL256(...) _HSTORE_EVAL128(_HSTORE_EVAL128(__VA_ARGS__))
-#define _HSTORE_EVAL128(...) _HSTORE_EVAL64(_HSTORE_EVAL64(__VA_ARGS__))
-#define _HSTORE_EVAL64(...) _HSTORE_EVAL32(_HSTORE_EVAL32(__VA_ARGS__))
-#define _HSTORE_EVAL32(...) _HSTORE_EVAL16(_HSTORE_EVAL16(__VA_ARGS__))
-#define _HSTORE_EVAL16(...) _HSTORE_EVAL8(_HSTORE_EVAL8(__VA_ARGS__))
-#define _HSTORE_EVAL8(...) _HSTORE_EVAL4(_HSTORE_EVAL4(__VA_ARGS__))
-#define _HSTORE_EVAL4(...) _HSTORE_EVAL2(_HSTORE_EVAL2(__VA_ARGS__))
-#define _HSTORE_EVAL2(...) _HSTORE_EVAL1(_HSTORE_EVAL1(__VA_ARGS__))
-#define _HSTORE_EVAL1(...) __VA_ARGS__
-#define _HSTORE_DEFER2(m) m _HSTORE_EMPTY _HSTORE_EMPTY()()
-#define _HSTORE_HAS_PARGS(...) _HSTORE_BOOL(_HSTORE_FIRST(_HSTORE__EOAP_ __VA_ARGS__)())
-#define _HSTORE__EOAP_(...) _HSTORE_BOOL(_HSTORE_FIRST(_HSTORE__EOA_ __VA_ARGS__)())
-#define _HSTORE__EOA_() 0
-#define _HSTORE_MAP(f, VS...) _HSTORE_EVAL(_HSTORE_MAPP(f, VS))
-#define _HSTORE_MAPP(f, H, T...)        \
+#define PRIV_HSTORE_FIRST(a, ...) a
+#define PRIV_HSTORE_SECOND(a, b, ...) b
+#define PRIV_HSTORE_JOIN(a,b) a ## b
+#define PRIV_HSTORE_IS_NEGATE(...) PRIV_HSTORE_SECOND(__VA_ARGS__, 0)
+#define PRIV_HSTORE_NOT(x) PRIV_HSTORE_IS_NEGATE(PRIV_HSTORE_JOIN(PRIV_HSTORE_SNOT_, x))
+#define PRIV_HSTORE_SNOT_0 NEGATE, 1
+#define PRIV_HSTORE_BOOL(x) PRIV_HSTORE_NOT(PRIV_HSTORE_NOT(x))
+#define PRIV_HSTORE_IF_ELSE(condition) PRIV_HSTORE_SIF_ELSE(PRIV_HSTORE_BOOL(condition))
+#define PRIV_HSTORE_SIF_ELSE(condition) PRIV_HSTORE_JOIN(PRIV_HSTORE_SIF_, condition)
+#define PRIV_HSTORE_SIF_1(...) __VA_ARGS__ PRIV_HSTORE_SIF_1_ELSE
+#define PRIV_HSTORE_SIF_0(...)             PRIV_HSTORE_SIF_0_ELSE
+#define PRIV_HSTORE_SIF_1_ELSE(...)
+#define PRIV_HSTORE_SIF_0_ELSE(...) __VA_ARGS__
+#define PRIV_HSTORE_EMPTY()
+#define PRIV_HSTORE_EVAL(...) PRIV_HSTORE_EVAL256(__VA_ARGS__)
+#define PRIV_HSTORE_EVAL256(...) PRIV_HSTORE_EVAL128(PRIV_HSTORE_EVAL128(__VA_ARGS__))
+#define PRIV_HSTORE_EVAL128(...) PRIV_HSTORE_EVAL64(PRIV_HSTORE_EVAL64(__VA_ARGS__))
+#define PRIV_HSTORE_EVAL64(...) PRIV_HSTORE_EVAL32(PRIV_HSTORE_EVAL32(__VA_ARGS__))
+#define PRIV_HSTORE_EVAL32(...) PRIV_HSTORE_EVAL16(PRIV_HSTORE_EVAL16(__VA_ARGS__))
+#define PRIV_HSTORE_EVAL16(...) PRIV_HSTORE_EVAL8(PRIV_HSTORE_EVAL8(__VA_ARGS__))
+#define PRIV_HSTORE_EVAL8(...) PRIV_HSTORE_EVAL4(PRIV_HSTORE_EVAL4(__VA_ARGS__))
+#define PRIV_HSTORE_EVAL4(...) PRIV_HSTORE_EVAL2(PRIV_HSTORE_EVAL2(__VA_ARGS__))
+#define PRIV_HSTORE_EVAL2(...) PRIV_HSTORE_EVAL1(PRIV_HSTORE_EVAL1(__VA_ARGS__))
+#define PRIV_HSTORE_EVAL1(...) __VA_ARGS__
+#define PRIV_HSTORE_DEFER2(m) m PRIV_HSTORE_EMPTY PRIV_HSTORE_EMPTY()()
+#define PRIV_HSTORE_HAS_PARGS(...) PRIV_HSTORE_BOOL(PRIV_HSTORE_FIRST(PRIV_HSTORE_SEOAP_ __VA_ARGS__)())
+#define PRIV_HSTORE_SEOAP_(...) PRIV_HSTORE_BOOL(PRIV_HSTORE_FIRST(PRIV_HSTORE_SEOA_ __VA_ARGS__)())
+#define PRIV_HSTORE_SEOA_() 0
+#define PRIV_HSTORE_MAP(f, VS...) PRIV_HSTORE_EVAL(PRIV_HSTORE_MAPP(f, VS))
+#define PRIV_HSTORE_MAPP(f, H, T...)        \
   f H                                 \
-  _HSTORE_IF_ELSE(_HSTORE_HAS_PARGS(T))(  \
-    _HSTORE_DEFER2(_HSTORE__MAPP)()(f, T) \
+  PRIV_HSTORE_IF_ELSE(PRIV_HSTORE_HAS_PARGS(T))(  \
+    PRIV_HSTORE_DEFER2(PRIV_HSTORE_SMAPP)()(f, T) \
   )(                                  \
   )
-#define _HSTORE__MAPP() _HSTORE_MAPP
+#define PRIV_HSTORE_SMAPP() PRIV_HSTORE_MAPP
+#define PRIV_HSTORE_MAPL(f, VS...) PRIV_HSTORE_EVAL(PRIV_HSTORE_MAPLP(f, VS))
+#define PRIV_HSTORE_MAPLP(f, H, T...)              \
+  f(H)                                             \
+  PRIV_HSTORE_IF_ELSE(PRIV_HSTORE_HAS_PARGS(T))(   \
+    PRIV_HSTORE_DEFER2(PRIV_HSTORE_SMAPLP)()(f, T) \
+  )(                                               \
+  )
+#define PRIV_HSTORE_SMAPLP() PRIV_HSTORE_MAPLP
 
 // support storing packed, reflective structs
 #define HSTORE_FIELDC_SUCC(t,n) +1
-#define HSTORE_FIELD_COUNT(FIELDS...) (0 _HSTORE_MAP(HSTORE_FIELDC_SUCC, FIELDS))
+#define HSTORE_FIELD_COUNT(FIELDS...) (0 PRIV_HSTORE_MAP(HSTORE_FIELDC_SUCC, FIELDS))
 
 #define HSTORE_FIELDS_SUCC(t,n) +::hobbes::storage::store< t >::size(this-> n)
-#define HSTORE_FIELD_SIZE(FIELDS...) (0 _HSTORE_MAP(HSTORE_FIELDS_SUCC, FIELDS))
+#define HSTORE_FIELD_SIZE(FIELDS...) (0 PRIV_HSTORE_MAP(HSTORE_FIELDS_SUCC, FIELDS))
 
 #define HSTORE_FIELDW_SUCC(t,n) &&::hobbes::storage::store< t >::write(p, this-> n)
-#define HSTORE_FIELD_WRITES(FIELDS...) (true _HSTORE_MAP(HSTORE_FIELDW_SUCC, FIELDS))
+#define HSTORE_FIELD_WRITES(FIELDS...) (true PRIV_HSTORE_MAP(HSTORE_FIELDW_SUCC, FIELDS))
 
 #define HSTORE_STRUCT_FIELD(t, n) t n;
-#define HSTORE_STRUCT_FIELD_ENC(t, n) ::hobbes::storage::ws(#n, out); ::hobbes::storage::w((int)-1, out); ::hobbes::storage::store< t >::encode(out);
+#define HSTORE_STRUCT_FIELD_ENC(t, n) ::hobbes::storage::ws(#n, out); ::hobbes::storage::w(static_cast<int>(-1), out); ::hobbes::storage::store< t >::encode(out);
 #define HSTORE_STRUCT_FIELD_DESC(t, n) + (", " #n " : " + ::hobbes::storage::store< t >::describe())
+#define HSTORE_STRUCT_FIELD_EQ(t, n) && this->n == rhs.n
 
 #define DEFINE_PACKED_HSTORE_STRUCT(T, FIELDS...) \
   struct T { \
-    _HSTORE_MAP(HSTORE_STRUCT_FIELD, FIELDS) /* struct fields */ \
+    PRIV_HSTORE_MAP(HSTORE_STRUCT_FIELD, FIELDS) /* struct fields */ \
     typedef void is_packed_hstore_struct; /* identify this type as a packed struct */ \
     static void encode(::hobbes::storage::bytes* out) { \
       size_t localArity = HSTORE_FIELD_COUNT(FIELDS); \
       if (localArity > 0) { \
-        ::hobbes::storage::w(_HSTORE_TYCTOR_STRUCT, out); \
+        ::hobbes::storage::w(PRIV_HSTORE_TYCTOR_STRUCT, out); \
         ::hobbes::storage::w(localArity, out); \
-        _HSTORE_MAP(HSTORE_STRUCT_FIELD_ENC, FIELDS) \
+        PRIV_HSTORE_MAP(HSTORE_STRUCT_FIELD_ENC, FIELDS) \
       } else { \
         ::hobbes::storage::encode_primty("unit", out); \
       } \
     } \
     static std::string describe() { \
-      return "{" + ( std::string("") _HSTORE_MAP(HSTORE_STRUCT_FIELD_DESC, FIELDS) ).substr(2) + "}"; \
+      return "{" + ( std::string("") PRIV_HSTORE_MAP(HSTORE_STRUCT_FIELD_DESC, FIELDS) ).substr(2) + "}"; \
+    } \
+    bool operator==(const T& rhs) const { \
+      return true PRIV_HSTORE_MAP(HSTORE_STRUCT_FIELD_EQ, FIELDS); \
     } \
   } __attribute__((packed))
 
@@ -936,26 +1265,30 @@ template <typename T>
     static void        encode(bytes* out)          { T::encode(out); }
     static std::string describe()                  { return T::describe(); }
     static size_t      size(const T&)              { return sizeof(T); }
-    static bool        write(wpipe& p, const T& x) { return p.write((const uint8_t*)&x, sizeof(x)); }
+    static bool        write(wpipe& p, const T& x) { return p.write(reinterpret_cast<const uint8_t*>(&x), sizeof(x)); }
   };
 
 // support storing standard, reflective structs
 #define DEFINE_HSTORE_STRUCT(T, FIELDS...) \
   struct T { \
-    _HSTORE_MAP(HSTORE_STRUCT_FIELD, FIELDS) /* struct fields */ \
+    PRIV_HSTORE_MAP(HSTORE_STRUCT_FIELD, FIELDS) /* struct fields */ \
     typedef void is_hstore_struct; /* identify this type as a struct */ \
+    static std::string name() { return #T; } \
     static void encode(::hobbes::storage::bytes* out) { \
       size_t localArity = HSTORE_FIELD_COUNT(FIELDS); \
       if (localArity > 0) { \
-        ::hobbes::storage::w(_HSTORE_TYCTOR_STRUCT, out); \
+        ::hobbes::storage::w(PRIV_HSTORE_TYCTOR_STRUCT, out); \
         ::hobbes::storage::w(localArity, out); \
-        _HSTORE_MAP(HSTORE_STRUCT_FIELD_ENC, FIELDS) \
+        PRIV_HSTORE_MAP(HSTORE_STRUCT_FIELD_ENC, FIELDS) \
       } else { \
         ::hobbes::storage::encode_primty("unit", out); \
       } \
     } \
     static std::string describe() { \
-      return "{" + ( std::string("") _HSTORE_MAP(HSTORE_STRUCT_FIELD_DESC, FIELDS) ).substr(2) + "}"; \
+      return "{" + ( std::string("") PRIV_HSTORE_MAP(HSTORE_STRUCT_FIELD_DESC, FIELDS) ).substr(2) + "}"; \
+    } \
+    bool operator==(const T& rhs) const { \
+      return true PRIV_HSTORE_MAP(HSTORE_STRUCT_FIELD_EQ, FIELDS); \
     } \
     size_t size() const { \
       return HSTORE_FIELD_SIZE(FIELDS); \
@@ -967,6 +1300,7 @@ template <typename T>
 
 template <typename T>
   struct store<T, typename T::is_hstore_struct> {
+    static std::string storageName()               { return T::name(); }
     static void        encode(bytes* out)          { T::encode(out); }
     static std::string describe()                  { return T::describe(); }
     static size_t      size(const T& x)            { return x.size(); }
@@ -977,15 +1311,15 @@ template <typename T>
 template <typename U, typename V>
   struct store<std::pair<U,V>> {
     static void encode(bytes* out) {
-      w(_HSTORE_TYCTOR_STRUCT, out);
-      w((size_t)2, out);
+      w(PRIV_HSTORE_TYCTOR_STRUCT, out);
+      w(static_cast<size_t>(2), out);
       
       ws(".f0", out);
-      w((int)-1, out);
+      w(static_cast<int>(-1), out);
       store<U>::encode(out);
 
       ws(".f1", out);
-      w((int)-1, out);
+      w(static_cast<int>(-1), out);
       store<V>::encode(out);
     }
     static std::string describe() {
@@ -999,6 +1333,67 @@ template <typename U, typename V>
     }
   };
 
+// support storing "struct views" (select fields / const accessor functions) out of a type
+template <typename T, typename F>
+  static F T::* resolve(F T::*);
+template <typename T, typename R>
+  static auto resolve(R (T::*K)() const) -> decltype(K);
+
+template <typename T> struct member;
+
+template <typename T, typename F>
+  struct member<F T::*> {
+    typedef F type;
+    typedef F T::* Acc;
+    static const F& read(const T& x, Acc a) { return x.*a; }
+  };
+template <typename T, typename F>
+  struct member<F (T::*)() const> {
+    typedef F type;
+    typedef F (T::*Acc)() const;
+    static F read(const T& x, Acc a) { return (x.*a)(); }
+  };
+
+#define PRIV_HSTORE_DSV_T(f)     member<decltype(resolve(&SelfT::f))>::type
+#define PRIV_HSTORE_DSV_READ(f)  member<decltype(resolve(&SelfT::f))>::read(x, std::integral_constant<member<decltype(resolve(&SelfT::f))>::Acc, &SelfT::f>::value)
+#define PRIV_HSTORE_DSV_COUNT(_) +1
+#define PRIV_HSTORE_DSV_ENCF(f)  ws(#f, out); w(int(-1), out); store< PRIV_HSTORE_DSV_T(f) >::encode(out);
+#define PRIV_HSTORE_DSV_DESC(f)  ss << ", " << #f << ":" << store< PRIV_HSTORE_DSV_T(f) >::describe();
+#define PRIV_HSTORE_DSV_SIZE(f)  + store< PRIV_HSTORE_DSV_T(f) >::size(PRIV_HSTORE_DSV_READ(f))
+#define PRIV_HSTORE_DSV_WRITE(f) && store< PRIV_HSTORE_DSV_T(f) >::write(p, PRIV_HSTORE_DSV_READ(f))
+
+#define DEFINE_HSTORE_STRUCT_VIEW(T, FIELDS...) \
+  namespace hobbes { namespace storage { \
+    template <> \
+      struct store<T> { \
+        typedef T SelfT; \
+        static void encode(bytes* out) { w(PRIV_HSTORE_TYCTOR_STRUCT, out); w(size_t(0 PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_COUNT, FIELDS)), out); PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_ENCF, FIELDS); } \
+        static std::string describe() { std::ostringstream ss; PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_DESC, FIELDS); return "{ " + ss.str().substr(2) + " }"; } \
+        static size_t size(const T& x) { return 0 PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_SIZE, FIELDS); } \
+        static bool write(wpipe& p, const T& x) { return true PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_WRITE, FIELDS); } \
+        static std::string storageName() { return #T; } \
+      }; \
+    template <> \
+      struct store<T*> { \
+        typedef T SelfT; \
+        static void encode(bytes* out) { w(PRIV_HSTORE_TYCTOR_STRUCT, out); w(size_t(0 PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_COUNT, FIELDS)), out); PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_ENCF, FIELDS); } \
+        static std::string describe() { std::ostringstream ss; PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_DESC, FIELDS); return "{ " + ss.str().substr(2) + " }"; } \
+        static size_t size(const T* px) { const T& x = *px; return 0 PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_SIZE, FIELDS); } \
+        static bool write(wpipe& p, const T* px) { const T& x = *px; return true PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_WRITE, FIELDS); } \
+        static std::string storageName() { return #T; } \
+      }; \
+    template <> \
+      struct store<const T*> { \
+        typedef T SelfT; \
+        static void encode(bytes* out) { w(PRIV_HSTORE_TYCTOR_STRUCT, out); w(size_t(0 PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_COUNT, FIELDS)), out); PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_ENCF, FIELDS); } \
+        static std::string describe() { std::ostringstream ss; PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_DESC, FIELDS); return "{ " + ss.str().substr(2) + " }"; } \
+        static size_t size(const T* px) { const T& x = *px; return 0 PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_SIZE, FIELDS); } \
+        static bool write(wpipe& p, const T* px) { const T& x = *px; return true PRIV_HSTORE_MAPL(PRIV_HSTORE_DSV_WRITE, FIELDS); } \
+        static std::string storageName() { return #T; } \
+      }; \
+  }}
+#define HSTORE_MAKE_FRIEND template <typename _> friend class hobbes::storage::store;
+
 // support storing reflective enumerations
 #define HSTORE_ENUM_CTOR_DEF(n) n ,
 #define HSTORE_ENUM_CTOR_CTOR(n) static const SelfT n() { return SelfT(SelfT::Enum::n); }
@@ -1006,31 +1401,32 @@ template <typename U, typename V>
 #define HSTORE_ENUM_CTOR_STR(n) + "|" #n
 #define HSTORE_ENUM_CTOR_ENCODE(n) \
   ::hobbes::storage::ws(#n, out); \
-  ::hobbes::storage::w((uint32_t)(Enum :: n), out); \
+  ::hobbes::storage::w(static_cast<uint32_t>(Enum :: n), out); \
   ::hobbes::storage::encode_primty("unit", out);
 
 #define DEFINE_HSTORE_ENUM(T, CTORS...) \
   struct T { \
     typedef void is_hstore_enum; \
     enum class Enum : uint32_t { \
-      _HSTORE_MAP(HSTORE_ENUM_CTOR_DEF, CTORS) \
+      PRIV_HSTORE_MAP(HSTORE_ENUM_CTOR_DEF, CTORS) \
       COUNT \
     }; \
     Enum value; \
     T() : value() { } \
     T(Enum v) : value(v) { } \
     T& operator=(Enum v) { this->value = v; return *this; } \
-    operator Enum() { return this->value; } \
+    operator Enum() const { return this->value; } \
     typedef T SelfT; \
-    _HSTORE_MAP(HSTORE_ENUM_CTOR_CTOR, CTORS) \
+    PRIV_HSTORE_MAP(HSTORE_ENUM_CTOR_CTOR, CTORS) \
     static void encode(::hobbes::storage::bytes* out) { \
-      ::hobbes::storage::w(_HSTORE_TYCTOR_VARIANT, out); \
-      ::hobbes::storage::w((size_t)(0 _HSTORE_MAP(HSTORE_ENUM_CTORC_SUCC, CTORS)), out); \
-      _HSTORE_MAP(HSTORE_ENUM_CTOR_ENCODE, CTORS); \
+      ::hobbes::storage::w(PRIV_HSTORE_TYCTOR_VARIANT, out); \
+      ::hobbes::storage::w(static_cast<size_t>(0 PRIV_HSTORE_MAP(HSTORE_ENUM_CTORC_SUCC, CTORS)), out); \
+      PRIV_HSTORE_MAP(HSTORE_ENUM_CTOR_ENCODE, CTORS); \
     } \
     static std::string describe() { \
-      return (std::string("") _HSTORE_MAP(HSTORE_ENUM_CTOR_STR, CTORS)).substr(1); \
+      return (std::string("") PRIV_HSTORE_MAP(HSTORE_ENUM_CTOR_STR, CTORS)).substr(1); \
     } \
+    bool operator==(const T& rhs) const { return this->value == rhs.value; } \
   }
 
 template <typename T>
@@ -1039,7 +1435,7 @@ template <typename T>
     static void        encode(bytes* out)          { T::encode(out); }
     static std::string describe()                  { return T::describe(); }
     static size_t      size(const T&)              { return sizeof(T); }
-    static bool        write(wpipe& p, const T& x) { return p.write((const uint8_t*)&x, sizeof(x)); }
+    static bool        write(wpipe& p, const T& x) { return p.write(reinterpret_cast<const uint8_t*>(&x), sizeof(x)); }
   };
 
 // support storing variants (with and without explicit constructor names)
@@ -1079,7 +1475,7 @@ template <typename T>
       return *this; \
     } \
     static void encode(::hobbes::storage::bytes* out) { \
-      ::hobbes::storage::w(_HSTORE_TYCTOR_VARIANT, out); \
+      ::hobbes::storage::w(PRIV_HSTORE_TYCTOR_VARIANT, out); \
       ::hobbes::storage::w((size_t)(0 CTORCOUNT), out); \
       VENCODE; \
     } \
@@ -1134,7 +1530,7 @@ template <typename T>
 #define HSTORE_VARIANT_SIZE_CASE(n, t)    case Enum::tag_##n: return sizeof(int) + ::hobbes::storage::store< t >::size(this->n##_data);
 #define HSTORE_VARIANT_WRITE_CASE(n, t) case Enum::tag_##n: return ::hobbes::storage::store<int>::write(p, (int)this->tag) && ::hobbes::storage::store< t >::write(p, this->n##_data);
 #define HSTORE_VARIANT_PCOPY(n, t)      case Enum::tag_##n: new (this->data) t(rhs.n##_data); break;
-#define HSTORE_VARIANT_PDESTROY(n, t)   case Enum::tag_##n: { typedef t __DT; ((__DT*)&this->n##_data)->~__DT(); } break;
+#define HSTORE_VARIANT_PDESTROY(n, t)   case Enum::tag_##n: { typedef t PRIV_DT; ((PRIV_DT*)&this->n##_data)->~PRIV_DT(); } break;
 #define HSTORE_VARIANT_SUCC(n, t) +1
 #define HSTORE_VARIANT_CTOR_OPAQUEDATA(n, t) t n##_data;
 #define HSTORE_VARIANT_CTOR_ENCODE(n, t) \
@@ -1147,7 +1543,7 @@ template <typename T>
 #define HSTORE_VARIANT_EQCASE(n, t) case Enum::tag_##n: return (this->n##_data == rhs.n##_data);
 
 #define DEFINE_HSTORE_VARIANT(T, CTORS...) \
-  DEFINE_HSTORE_VARIANT_GEN(T, _HSTORE_MAP(HSTORE_VARIANT_VDECL, CTORS), _HSTORE_MAP(HSTORE_VARIANT_CTOR, CTORS), _HSTORE_MAP(HSTORE_VARIANT_PCOPY, CTORS), _HSTORE_MAP(HSTORE_VARIANT_PDESTROY, CTORS), _HSTORE_MAP(HSTORE_VARIANT_SUCC, CTORS), _HSTORE_MAP(HSTORE_VARIANT_CTOR_ENCODE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_CTOR_STR, CTORS), _HSTORE_MAP(HSTORE_VARIANT_SIZE_CASE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_WRITE_CASE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_VCASE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_EQCASE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_CTOR_TAG, CTORS), _HSTORE_MAP(HSTORE_VARIANT_CTOR_OPAQUEDATA, CTORS))
+  DEFINE_HSTORE_VARIANT_GEN(T, PRIV_HSTORE_MAP(HSTORE_VARIANT_VDECL, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_CTOR, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_PCOPY, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_PDESTROY, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_SUCC, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_CTOR_ENCODE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_CTOR_STR, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_SIZE_CASE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_WRITE_CASE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_VCASE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_EQCASE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_CTOR_TAG, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_CTOR_OPAQUEDATA, CTORS))
 
 // (with explicit ctor names)
 #define HSTORE_VARIANT_LBL_CTOR(n, lbl, t) static SelfT n(const t & x) { SelfT r; r.tag = Enum::tag_##n; new (r.data) t(x); return r; }
@@ -1156,7 +1552,7 @@ template <typename T>
 #define HSTORE_VARIANT_LBL_SIZE_CASE(n, lbl, t)    case Enum::tag_##n: return sizeof(int) + ::hobbes::storage::store< t >::size(this->n##_data);
 #define HSTORE_VARIANT_LBL_WRITE_CASE(n, lbl, t) case Enum::tag_##n: return ::hobbes::storage::store<int>::write(p, (int)this->tag) && ::hobbes::storage::store< t >::write(p, this->n##_data);
 #define HSTORE_VARIANT_LBL_PCOPY(n, lbl, t)      case Enum::tag_##n: new (this->data) t(rhs.n##_data); break;
-#define HSTORE_VARIANT_LBL_PDESTROY(n, lbl, t)   case Enum::tag_##n: { typedef t __DT; ((__DT*)&this->n##_data)->~__DT(); } break;
+#define HSTORE_VARIANT_LBL_PDESTROY(n, lbl, t)   case Enum::tag_##n: { typedef t PRIV_DT; ((PRIV_DT*)&this->n##_data)->~PRIV_DT(); } break;
 #define HSTORE_VARIANT_LBL_SUCC(n, lbl, t) +1
 #define HSTORE_VARIANT_LBL_CTOR_OPAQUEDATA(n, lbl, t) t n##_data;
 #define HSTORE_VARIANT_LBL_CTOR_ENCODE(n, lbl, t) \
@@ -1169,7 +1565,7 @@ template <typename T>
 #define HSTORE_VARIANT_LBL_EQCASE(n, lbl, t) case Enum::tag_##n: return (this->n##_data == rhs.n##_data);
 
 #define DEFINE_HSTORE_VARIANT_WITH_LABELS(T, CTORS...) \
-  DEFINE_HSTORE_VARIANT_GEN(T, _HSTORE_MAP(HSTORE_VARIANT_LBL_VDECL, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_PCOPY, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_PDESTROY, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_SUCC, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR_ENCODE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR_STR, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_SIZE_CASE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_WRITE_CASE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_VCASE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_EQCASE, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR_TAG, CTORS), _HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR_OPAQUEDATA, CTORS))
+  DEFINE_HSTORE_VARIANT_GEN(T, PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_VDECL, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_PCOPY, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_PDESTROY, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_SUCC, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR_ENCODE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR_STR, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_SIZE_CASE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_WRITE_CASE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_VCASE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_EQCASE, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR_TAG, CTORS), PRIV_HSTORE_MAP(HSTORE_VARIANT_LBL_CTOR_OPAQUEDATA, CTORS))
 
 template <typename T>
   struct store<T, typename T::is_hstore_variant> {
@@ -1195,7 +1591,7 @@ template <typename T>
 template <>
   struct store<recursion> {
     static void encode(bytes* out) {
-      w(_HSTORE_TYCTOR_TVAR, out);
+      w(PRIV_HSTORE_TYCTOR_TVAR, out);
       ws("x", out);
     }
     static std::string describe() {
@@ -1224,7 +1620,7 @@ template <>
 template <typename T>
   struct store<recursive<T>> {
     static void encode(bytes* out) {
-      w(_HSTORE_TYCTOR_RECURSIVE, out);
+      w(PRIV_HSTORE_TYCTOR_RECURSIVE, out);
       ws("x", out);
       store<T>::encode(out);
     }
@@ -1232,7 +1628,7 @@ template <typename T>
       return "^x." + store<T>::describe();
     }
     static size_t recSize(const recursion& x) {
-      return size(*((recursive<T>*)x.value));
+      return size(*reinterpret_cast<const recursive<T>*>(x.value));
     }
     static size_t size(const recursive<T>& x) {
       typedef typename store<recursion>::RecSizeF RSF;
@@ -1244,7 +1640,7 @@ template <typename T>
     }
 
     static bool recWrite(wpipe& p, const recursion& x) {
-      return write(p, *((recursive<T>*)x.value));
+      return write(p, *reinterpret_cast<const recursive<T>*>(x.value));
     }
     static bool write(wpipe& p, const recursive<T>& x) {
       typedef typename store<recursion>::RecWriteF RWF;
@@ -1272,22 +1668,23 @@ template <>
   };
 
 // store opaque type aliases
-#define DEFINE_HSTORE_TYPE_ALIAS(_ATY, _REPTY) \
-  struct _ATY { \
+#define DEFINE_HSTORE_TYPE_ALIAS(PRIV_ATY, PRIV_REPTY) \
+  struct PRIV_ATY { \
     typedef void is_hstore_alias; \
-    typedef _REPTY type; \
-    static const char* name() { return #_ATY; } \
-    inline operator _REPTY() { return this->value; } \
-    _REPTY value; \
-    _ATY() : value() { } \
-    _ATY(const _REPTY& x) : value(x) { } \
-    _ATY(const _ATY& x) : value(x.value) { } \
-    _ATY& operator=(const _ATY& x) { this->value = x.value; return *this; } \
+    typedef PRIV_REPTY type; \
+    static const char* name() { return #PRIV_ATY; } \
+    inline operator PRIV_REPTY() { return this->value; } \
+    PRIV_REPTY value; \
+    PRIV_ATY() : value() { } \
+    PRIV_ATY(const PRIV_REPTY& x) : value(x) { } \
+    constexpr PRIV_ATY(const PRIV_ATY& x) = default; \
+    PRIV_ATY& operator=(const PRIV_ATY& x) = default; \
+    bool operator==(const PRIV_ATY& x) const { return this->value == x.value; } \
   }
 
 template <typename T>
   struct store<T, typename T::is_hstore_alias> {
-    static void        encode(bytes* out)          { w(_HSTORE_TYCTOR_PRIM, out); ws(T::name(), out); w((bool)true, out); store<typename T::type>::encode(out); }
+    static void        encode(bytes* out)          { w(PRIV_HSTORE_TYCTOR_PRIM, out); ws(T::name(), out); w(true, out); store<typename T::type>::encode(out); }
     static std::string describe()                  { return T::name(); }
     static size_t      size(const T& x)            { return store<typename T::type>::size(x.value); }
     static bool        write(wpipe& p, const T& x) { return store<typename T::type>::write(p, x.value); }
@@ -1297,15 +1694,15 @@ template <typename T>
 template <typename T, size_t N>
   struct fixedArrTyDesc {
     static void encode(bytes* out) {
-      w(_HSTORE_TYCTOR_FIXEDARR, out);
+      w(PRIV_HSTORE_TYCTOR_FIXEDARR, out);
       store<T>::encode(out);
-      w(_HSTORE_TYCTOR_SIZE, out);
-      w((long)N, out);
+      w(PRIV_HSTORE_TYCTOR_SIZE, out);
+      w(static_cast<long>(N), out);
     }
 
     static std::string describe() {
       char nf[32];
-      snprintf(nf, sizeof(nf), "%lld", (unsigned long long)N);
+      snprintf(nf, sizeof(nf), "%lld", static_cast<unsigned long long>(N));
       return "[:" + store<T>::describe() + "|" + std::string(nf) + ":]";
     }
   };
@@ -1316,7 +1713,7 @@ template <typename T, size_t N>
       return sizeof(T)*N;
     }
     static bool write(wpipe& p, const T (&v)[N]) {
-      return p.write((const uint8_t*)v, sizeof(T)*N);
+      return p.write(reinterpret_cast<const uint8_t*>(v), sizeof(T)*N);
     }
   };
 
@@ -1345,18 +1742,29 @@ template <typename T, size_t N>
 template <typename T, size_t N>
   struct store<T[N], typename cannot_memcpy<T>::type> : public fixedArrTyDesc<T,N>, fixedArrIterWrite<T,N> { };
 
+template <typename T, size_t N>
+  struct store<std::array<T, N>, typename store<T>::can_memcpy> : public fixedArrTyDesc<T, N> {
+    static size_t size(const std::array<T, N>& x) { return sizeof(T)*N; }
+    static bool write(wpipe& p, const std::array<T, N>& x) { return p.write(reinterpret_cast<const uint8_t*>(&x), size(x)); }
+  };
+template <typename T, size_t N>
+  struct store<std::array<T, N>, typename cannot_memcpy<T>::type> : public fixedArrTyDesc<T, N> {
+    static size_t size(const std::array<T, N>& x) { size_t n = 0; for (size_t i = 0; i < N; ++i) { n += store<T>::size(x[i]); } return n; }
+    static bool write(wpipe& p, const std::array<T, N>& x) { for (size_t i = 0; i < N; ++i) { if (!store<T>::write(p, x[i])) return false; } return true; }
+  };
+
 // support storage of vectors
 template <typename T>
   struct store<std::vector<T>, typename store<T>::can_memcpy> {
-    static void encode(bytes* out) { w(_HSTORE_TYCTOR_ARR, out); store<T>::encode(out); }
+    static void encode(bytes* out) { w(PRIV_HSTORE_TYCTOR_ARR, out); store<T>::encode(out); }
     static std::string describe() { return "[" + store<T>::describe() + "]"; }
     static size_t size(const std::vector<T>& xs) { return sizeof(size_t) + (xs.size() * sizeof(T)); }
-    static bool write(wpipe& p, const std::vector<T>& xs) { size_t n = xs.size(); return store<size_t>::write(p, n) && p.write((const uint8_t*)&xs[0], n * sizeof(T)); }
+    static bool write(wpipe& p, const std::vector<T>& xs) { size_t n = xs.size(); return store<size_t>::write(p, n) && p.write(reinterpret_cast<const uint8_t*>(&xs[0]), n * sizeof(T)); }
   };
 
 template <typename T>
   struct store<std::vector<T>, typename cannot_memcpy<T>::type> {
-    static void encode(bytes* out) { w(_HSTORE_TYCTOR_ARR, out); store<T>::encode(out); }
+    static void encode(bytes* out) { w(PRIV_HSTORE_TYCTOR_ARR, out); store<T>::encode(out); }
     static std::string describe() { return "[" + store<T>::describe() + "]"; }
     static size_t size(const std::vector<T>& xs) {
       size_t t = sizeof(size_t);
@@ -1382,41 +1790,112 @@ template <typename T>
 // support storage of strings
 template <>
   struct store<const char*> {
-    static void encode(bytes* out) { w(_HSTORE_TYCTOR_ARR, out); store<char>::encode(out); }
+    static void encode(bytes* out) { w(PRIV_HSTORE_TYCTOR_ARR, out); store<char>::encode(out); }
     static std::string describe() { return "[char]"; }
     static size_t size(const char* s) { return sizeof(size_t) + strlen(s); }
-    static bool write(wpipe& p, const char* s) { size_t n = strlen(s); return store<size_t>::write(p, n) && p.write((const uint8_t*)s, n); }
+    static bool write(wpipe& p, const char* s) { size_t n = strlen(s); return store<size_t>::write(p, n) && p.write(reinterpret_cast<const uint8_t*>(s), n); }
+  };
+template <>
+  struct store<char*> {
+    static void encode(bytes* out) { w(PRIV_HSTORE_TYCTOR_ARR, out); store<char>::encode(out); }
+    static std::string describe() { return "[char]"; }
+    static size_t size(char* s) { return sizeof(size_t) + strlen(s); }
+    static bool write(wpipe& p, char* s) { size_t n = strlen(s); return store<size_t>::write(p, n) && p.write(reinterpret_cast<const uint8_t*>(s), n); }
   };
 template <>
   struct store<std::string> {
-    static void encode(bytes* out) { w(_HSTORE_TYCTOR_ARR, out); store<char>::encode(out); }
+    static void encode(bytes* out) { w(PRIV_HSTORE_TYCTOR_ARR, out); store<char>::encode(out); }
     static std::string describe() { return "[char]"; }
     static size_t size(const std::string& s) { return sizeof(size_t) + s.size(); }
-    static bool write(wpipe& p, const std::string& s) { size_t n = s.size(); return store<size_t>::write(p, n) && p.write((const uint8_t*)s.data(), n); }
+    static bool write(wpipe& p, const std::string& s) { size_t n = s.size(); return store<size_t>::write(p, n) && p.write(reinterpret_cast<const uint8_t*>(s.data()), n); }
+  };
+
+// support values carrying field names (easier to record structs without making an explicit struct type)
+template <typename F, typename T>
+  struct namedValue {
+    T value;
+    namedValue(const T& v) : value(v) { }
+  };
+
+template <typename F, typename T>
+  struct store<namedValue<F,T>> {
+    static void encode(bytes* out) { store<T>::encode(out); }
+    static std::string describe() { return store<T>::describe(); }
+    static size_t size(const namedValue<F,T>& x) { return store<T>::size(x.value); }
+    static bool write(wpipe& p, const namedValue<F,T>& x) { return store<T>::write(p, x.value); }
+  };
+
+#define HNAME(N,E) ::hobbes::storage::namedValue<PRIV_HSTORE_TSTR(#N),decltype(E)>(E)
+
+// allow inference of log statement names from payload types
+typedef void (*tynamehints)(std::vector<std::string>*);
+template <typename T>
+  struct nameAt {
+    template <typename U, std::string (*P)()> struct HasStorageName { };
+    template <typename U> static std::string is(const HasStorageName<U, &U::storageName>*) { return U::storageName(); }
+    template <typename U> static std::string is(...)                                       { return ""; }
+  };
+
+template <typename T>
+  struct storeNames {
+    static void accum(std::vector<std::string>* ns) {
+      std::string n = nameAt<T>::template is<store<T>>(0);
+      if (n.size() > 0) {
+        ns->push_back(n);
+      }
+    }
   };
 
 // make a function for describing store payload types
+template <typename T>
+  struct hstore_argl_name {
+    static const bool isTuple = true;
+    static void nameDesc(const char* prefix, size_t idx, char* buffer, size_t buflen) {
+      snprintf(buffer, buflen, prefix, static_cast<unsigned long long>(idx));
+    }
+  };
+template <typename F, typename T>
+  struct hstore_argl_name<namedValue<F,T>> {
+    static const bool isTuple = false;
+    static void nameDesc(const char*, size_t, char* buffer, size_t buflen) {
+      strncpy(buffer, F::str(), buflen);
+    }
+  };
+
 template <typename ... Ts>
   struct hstore_payload_types {
-    typedef void head_type;
+    typedef unit head_type;
     static const size_t count = 0;
-    static void encode(size_t,bytes*) {}
-    static std::string describe() { return ""; }
+    static const bool isTuple = true;
+    static void encode(const char*,size_t,bytes*) {}
+    static std::string describe(const char*,size_t) { return ""; }
+    static void nameHints(std::vector<std::string>*) {}
   };
 template <typename T, typename ... Ts>
   struct hstore_payload_types<T,Ts...> {
     typedef T head_type;
     static const size_t count = 1 + hstore_payload_types<Ts...>::count;
-    static void encode(size_t f, bytes* out) {
-      char fn[32];
-      snprintf(fn, sizeof(fn), ".f%lld", (unsigned long long)f);
+    static const bool isTuple = hstore_argl_name<T>::isTuple && hstore_payload_types<Ts...>::isTuple;
+    static void encode(const char* fmt, size_t f, bytes* out) {
+      char fn[128];
+      hstore_argl_name<T>::nameDesc(fmt, f, fn, sizeof(fn));
       ws(fn, out);
-      w((int)-1, out);
+      w(static_cast<int>(-1), out);
       store<T>::encode(out);
-      hstore_payload_types<Ts...>::encode(f+1, out);
+      hstore_payload_types<Ts...>::encode(fmt, f+1, out);
     }
-    static std::string describe() {
-      return "*" + store<T>::describe() + hstore_payload_types<Ts...>::describe();
+    static std::string describe(const char* fmt, size_t f) {
+      if (fmt) {
+        char fn[128];
+        hstore_argl_name<T>::nameDesc(fmt, f, fn, sizeof(fn));
+        return "," + std::string(fn) + ":" + store<T>::describe() + hstore_payload_types<Ts...>::describe(fmt, f+1);
+      } else {
+        return "*" + store<T>::describe() + hstore_payload_types<Ts...>::describe(0,0);
+      }
+    }
+    static void nameHints(std::vector<std::string>* ns) {
+      storeNames<T>::accum(ns);
+      hstore_payload_types<Ts...>::nameHints(ns);
     }
   };
 template <typename ... Ts>
@@ -1429,54 +1908,38 @@ template <typename TyList>
   void makeTyDescF(bytes* e, std::string* d) {
     if (e) {
       size_t localArity = TyList::count;
+      bool   isTuple    = TyList::isTuple;
 
-      // don't bother to entuple log argument lists if there's just one argument
-      switch (localArity) {
-      case 0:
-        encode_primty("unit", e);
-        break;
-      case 1:
-        store<typename TyList::head_type>::encode(e);
-        break;
-      default:
-        w(_HSTORE_TYCTOR_STRUCT, e);
+      if (!isTuple) {
+        w(PRIV_HSTORE_TYCTOR_STRUCT, e);
         w(localArity, e);
-        TyList::encode(0, e);
-        break;
+        TyList::encode("field%lld", 0, e);
+      } else {
+        // don't bother to entuple log argument lists if there's just one argument
+        switch (localArity) {
+        case 0:
+          encode_primty("unit", e);
+          break;
+        case 1:
+          store<typename TyList::head_type>::encode(e);
+          break;
+        default:
+          w(PRIV_HSTORE_TYCTOR_STRUCT, e);
+          w(localArity, e);
+          TyList::encode(".f%lld", 0, e);
+          break;
+        }
       }
     }
 
     if (d) {
-      *d = TyList::describe().substr(1);
+      if (TyList::isTuple) {
+        *d = TyList::describe(0,0).substr(1);
+      } else {
+        *d = "{" + TyList::describe("field%lld",0).substr(1) + "}";
+      }
     }
   }
-
-// compile-time strings -- used to uniquely identify log statements
-template <size_t N>
-  constexpr char at(size_t i, const char (&s)[N]) {
-    return (i < N) ? s[i] : '\0';
-  }
-template <size_t N>
-  constexpr size_t at8S(size_t i, size_t k, const char (&s)[N]) {
-    return (k==8) ? 0 : ((((size_t)at(i+k,s))<<(8*k))|at8S(i,k+1,s));
-  }
-template <size_t N>
-  constexpr size_t at8(size_t i, const char (&s)[N]) {
-    return at8S(i, 0, s);
-  }
-template <size_t... pcs>
-  struct strpack {
-    static std::string str() {
-      constexpr size_t msg[] = {pcs...};
-      static_assert(msg[(sizeof(msg)/sizeof(msg[0]))-1] == 0, "compile-time string larger than internal max limit (this limit can be bumped in storage.H)");
-      return std::string((const char*)msg);
-    }
-  };
-#define _HSTORE_TSTR32(i,s)   ::hobbes::storage::at8(i+(8*0),s),::hobbes::storage::at8(i+(8*1),s),::hobbes::storage::at8(i+(8*2),s),::hobbes::storage::at8(i+(8*3),s)
-#define _HSTORE_TSTR128(i,s)  _HSTORE_TSTR32(i+(32*0),s),_HSTORE_TSTR32(i+(32*1),s),_HSTORE_TSTR32(i+(32*2),s),_HSTORE_TSTR32(i+(32*3),s)
-#define _HSTORE_TSTR512(i,s)  _HSTORE_TSTR128(i+(128*0),s),_HSTORE_TSTR128(i+(128*1),s),_HSTORE_TSTR128(i+(128*2),s),_HSTORE_TSTR128(i+(128*3),s)
-#define _HSTORE_TSTR1024(i,s) _HSTORE_TSTR512(i+(512*0),s),_HSTORE_TSTR512(i+(512*1),s)
-#define _HSTORE_TSTR(s)       ::hobbes::storage::strpack<_HSTORE_TSTR1024(0,s)>
 
 template <uint32_t* X>
   uint32_t forceRegistration() { return *X; }
@@ -1486,7 +1949,7 @@ template <typename Group, Group* G, typename File, uint32_t Line, typename StmtN
     StorageStatement() { forceRegistration<&id>(); }
   };
 template <typename Group, Group* G, typename File, uint32_t Line, typename StmtName, size_t Flags, typename FormatStr, typename ArgTyList>
-  uint32_t StorageStatement<Group, G, File, Line, StmtName, Flags, FormatStr, ArgTyList>::id = G->allocateStorageStatement(File::str(), Line, StmtName::str(), Flags, FormatStr::str(), &makeTyDescF<ArgTyList>);
+  uint32_t StorageStatement<Group, G, File, Line, StmtName, Flags, FormatStr, ArgTyList>::id = G->allocateStorageStatement(File::str(), Line, StmtName::str(), Flags, FormatStr::str(), &makeTyDescF<ArgTyList>, &ArgTyList::nameHints);
 
 // allow static registration of storage points
 enum CommitMethod {
@@ -1510,8 +1973,14 @@ struct StorageGroup {
   PipeQOS            qos;
   size_t             mempages;
   int                mqserver;
+  WaitPolicy         wp;
+  bool               enabled;
 
   static thread_local wpipe* pipe;
+
+  constexpr StorageGroup(size_t pagec, const PipeQOS qos) : StorageGroup(pagec, qos, Platform) {}
+  constexpr StorageGroup(size_t pagec, const PipeQOS qos, const WaitPolicy wp)
+    : statements(nullptr), qos(qos), mempages(pagec), mqserver(-1), wp(wp), enabled(true) {}
 
   ~StorageGroup() {
     delete this->statements;
@@ -1522,11 +1991,11 @@ struct StorageGroup {
     if (!this->statements) return; // if nothing to record, nothing to prepare
 
     w(HSTORE_VERSION, meta);
-    w((int)this->qos, meta);
-    w((int)cm, meta);
+    w(static_cast<int>(this->qos), meta);
+    w(static_cast<int>(cm), meta);
 
     // write the count of storage statements, then each statement's static data
-    w((uint32_t)this->statements->size(), meta);
+    w(static_cast<uint32_t>(this->statements->size()), meta);
     for (auto s : *this->statements) {
       ws(s.first,         meta);
       w (s.second.flags,  meta);
@@ -1542,7 +2011,7 @@ struct StorageGroup {
   }
 
   wpipe& out() {
-    if (_HSTORE_LIKELY(this->pipe != 0)) {
+    if (PRIV_HSTORE_LIKELY(this->pipe != 0)) {
       return *this->pipe;
     }
 
@@ -1553,8 +2022,15 @@ struct StorageGroup {
     size_t pagesz = sysconf(_SC_PAGESIZE);
     size_t pagec  = 1 + (meta.size() / pagesz) + std::max<size_t>(this->mempages, 10);
 
-    this->pipe = new wpipe(new writer(meta, sharedMemName(Name::str()), pagesz, pagec), this->qos);
-    registerSHMAlloc(&this->mqserver, Name::str());
+    this->pipe = new wpipe(new writer(meta, sharedMemName(Name::str()), pagesz, pagec, wp), this->qos, /*if blocked 1ms*/ 1000000L, /*reconnect if needed*/ [&](){ reconnectSHM(&this->mqserver, Name::str(), wp); });
+    try {
+      registerSHMAlloc(&this->mqserver, Name::str(), wp);
+    } catch (...) {
+      // unreliable mode can accept connection failures
+      if (this->qos != Unreliable) {
+        throw;
+      }
+    }
     return *this->pipe;
   }
 
@@ -1566,11 +2042,87 @@ struct StorageGroup {
     out().commit();
   }
 
-  uint32_t allocateStorageStatement(const std::string& file, uint32_t line, const std::string& name, size_t flags, const std::string& fmtstr, tydescfn tdesc) {
+  inline void rollback() {
+    out().rollback();
+  }
+
+  inline void enable() {
+    this->enabled = true;
+  }
+
+  inline void disable() {
+    this->enabled = false;
+  }
+
+  // use the log statement name provided by the user (if applicable)
+  // if the name is auto:N, then use either N or a name inferred from the type being logged
+  // for auto-assigned names, append an incrementing counter if necessary to make the name unique
+  static bool isAutoName(const std::string& x) {
+    return x.substr(0, 5) == "auto:";
+  }
+
+  static std::string decideName(const std::string& x, tynamehints tnhints) {
+    if (!isAutoName(x)) {
+      return x;
+    } else {
+      std::string n;
+      std::vector<std::string> ns;
+      tnhints(&ns);
+      if (ns.size() == 0) {
+        n = x.substr(5);
+      } else {
+        std::ostringstream nss;
+        nss << ns[0];
+        for (size_t i = 1; i < ns.size(); ++i) {
+          nss << "_" << ns[i];
+        }
+        n = nss.str();
+      }
+      return n;
+    }
+  }
+
+  static std::string incrAutoName(const std::string& n) {
+    std::ostringstream fnss;
+    static std::map<std::string, std::atomic<size_t>*> ctrs;
+    auto i = ctrs.find(n);
+    if (i != ctrs.end()) {
+      fnss << n << *i->second;
+      ++*i->second;
+    } else {
+      fnss << n << "1";
+      ctrs[n] = new std::atomic<size_t>(2);
+    }
+    return fnss.str();
+  }
+
+  uint32_t addStatement(const std::string file, uint32_t line, const std::string& name, size_t flags, const std::string& fmtstr, tydescfn tdesc) {
+    if (this->statements->find(name) != this->statements->end()) {
+      std::cerr
+        << "fatal error: duplicate log name in use (" << name << ")"
+        << std::endl;
+
+      exit(-1);
+    }
+
+    StmtData d;
+    d.tdesc  = tdesc;
+    d.flags  = flags;
+    d.fmtstr = fmtstr;
+    d.file   = file;
+    d.line   = line;
+    d.id     = static_cast<uint32_t>(this->statements->size());
+
+    (*this->statements)[name] = d;
+    return d.id;
+  }
+
+  uint32_t allocateStorageStatement(const std::string& file, uint32_t line, const std::string& namet, size_t flags, const std::string& fmtstr, tydescfn tdesc, tynamehints tnhints) {
     if (!this->statements) {
       this->statements = new StorageStatements();
     }
-
+    
+    auto name = decideName(namet, tnhints);
     auto s = this->statements->find(name);
     if (s != this->statements->end()) {
       // this statement has already been added
@@ -1579,56 +2131,59 @@ struct StorageGroup {
       s->second.tdesc(&ety,0);
       tdesc(&xty,0);
       if (ety != xty) {
-        std::string etd, xtd;
-        s->second.tdesc(0,&etd);
-        tdesc(0,&xtd);
+        if (isAutoName(namet)) {
+          return addStatement(file, line, incrAutoName(name), flags, fmtstr, tdesc);
+        } else {
+          std::string etd, xtd;
+          s->second.tdesc(0,&etd);
+          tdesc(0,&xtd);
 
-        std::cerr
-          << "fatal error: incompatible types for store statement '" << name << "' between:\n"
-          << "  " << s->second.file << ":" << s->second.line << " (" << xtd << ")\n"
-          << "and\n"
-          << "  " << file << ":" << line << " (" << etd << ")\n"
-          << std::endl;
+          std::cerr
+            << "fatal error: incompatible types for store statement '" << name << "' between:\n"
+            << "  " << s->second.file << ":" << s->second.line << " (" << xtd << ")\n"
+            << "and\n"
+            << "  " << file << ":" << line << " (" << etd << ")\n"
+            << std::endl;
 
-        exit(-1);
+          exit(-1);
+        }
       }
 
       if (s->second.fmtstr != fmtstr) {
-        std::cerr
-          << "fatal error: incompatible format strings for store statement '" << name << "' between:\n"
-          << "  " << s->second.file << ":" << s->second.line << " (" << s->second.fmtstr << ")\n"
-          << "and\n"
-          << "  " << file << ":" << line << " (" << fmtstr << ")\n"
-          << std::endl;
+        if (isAutoName(namet)) {
+          return addStatement(file, line, incrAutoName(name), flags, fmtstr, tdesc);
+        } else {
+          std::cerr
+            << "fatal error: incompatible format strings for store statement '" << name << "' between:\n"
+            << "  " << s->second.file << ":" << s->second.line << " (" << s->second.fmtstr << ")\n"
+            << "and\n"
+            << "  " << file << ":" << line << " (" << fmtstr << ")\n"
+            << std::endl;
 
-        exit(-1);
+          exit(-1);
+        }
       }
 
       if (s->second.flags != flags) {
-        std::cerr
-          << "fatal error: incompatible storage flags for store statement '" << name << "' between:\n"
-          << "  " << s->second.file << ":" << s->second.line << " (" << s->second.flags << ")\n"
-          << "and\n"
-          << "  " << file << ":" << line << " (" << flags << ")\n"
-          << std::endl;
+        if (isAutoName(namet)) {
+          return addStatement(file, line, incrAutoName(name), flags, fmtstr, tdesc);
+        } else {
+          std::cerr
+            << "fatal error: incompatible storage flags for store statement '" << name << "' between:\n"
+            << "  " << s->second.file << ":" << s->second.line << " (" << s->second.flags << ")\n"
+            << "and\n"
+            << "  " << file << ":" << line << " (" << flags << ")\n"
+            << std::endl;
 
-        exit(-1);
+          exit(-1);
+        }
       }
 
       return s->second.id;
     }
 
-    // this must be a new statement, give it a new ID and put it in the group list
-    StmtData d;
-    d.tdesc  = tdesc;
-    d.flags  = flags;
-    d.fmtstr = fmtstr;
-    d.file   = file;
-    d.line   = line;
-    d.id     = (uint32_t)this->statements->size();
-
-    (*this->statements)[name] = d;
-    return d.id;
+    // this must be a new statement
+    return addStatement(file, line, name, flags, fmtstr, tdesc);
   }
 };
 template <typename Name, CommitMethod cm>
@@ -1653,6 +2208,9 @@ template <typename T, typename ... Ts>
 template <typename GName, typename ... Ts>
   inline bool write(StorageGroup<GName, AutoCommit>* g, uint32_t id, const Ts&... xs) {
     wpipe& p = g->out();
+    if (!g->enabled) {
+      return false;
+    }
     if (!p.hasSpaceFor(sizeof(uint32_t) + serialize_values<Ts...>::size(xs...))) {
       g->commit();
     }
@@ -1662,7 +2220,8 @@ template <typename GName, typename ... Ts>
 template <typename GName, typename ... Ts>
   inline bool write(StorageGroup<GName, ManualCommit>* g, uint32_t id, const Ts&... xs) {
     wpipe& p = g->out();
-    return store<uint32_t>::write(p, id) &&
+    return g->enabled &&
+           store<uint32_t>::write(p, id) &&
            serialize_values<Ts...>::write(p, xs...);
   }
 
@@ -1693,12 +2252,12 @@ template <size_t N>
   }
 
 // create statement groups
-#define DECLARE_STORAGE_GROUP(NAME, cm)            extern ::hobbes::storage::StorageGroup<_HSTORE_TSTR(#NAME),cm> NAME
-#define DEFINE_STORAGE_GROUP(NAME, pagec, qos, cm) ::hobbes::storage::StorageGroup<_HSTORE_TSTR(#NAME),cm> NAME = { 0, qos, pagec, -1 }
+#define DECLARE_STORAGE_GROUP(NAME, cm)                     extern ::hobbes::storage::StorageGroup<PRIV_HSTORE_TSTR(#NAME),cm> NAME
+#define DEFINE_STORAGE_GROUP(NAME, pagec, qos, cm, ARGS...) ::hobbes::storage::StorageGroup<PRIV_HSTORE_TSTR(#NAME),cm> NAME(pagec, qos, ## ARGS)
 
 // record some data
 #define APPLY_HSTORE_STMT(GROUP, NAME, FLAGS, FMTSTR, ARGS...) \
-  ::hobbes::storage::write(&GROUP, ({static_assert(::hobbes::storage::maxVarRef(FMTSTR) <= decltype(::hobbes::storage::makePayloadTypes(ARGS))::count, "Log format string and payload arity mismatch"); ::hobbes::storage::StorageStatement<decltype(GROUP),&GROUP,_HSTORE_TSTR(__FILE__),__LINE__,_HSTORE_TSTR(#NAME),FLAGS,_HSTORE_TSTR(FMTSTR),decltype(::hobbes::storage::makePayloadTypes(ARGS))>::id;}), ## ARGS)
+  ::hobbes::storage::write(&GROUP, ({static_assert(::hobbes::storage::maxVarRef(FMTSTR) <= decltype(::hobbes::storage::makePayloadTypes(ARGS))::count, "Log format string and payload arity mismatch"); ::hobbes::storage::StorageStatement<decltype(GROUP),&GROUP,PRIV_HSTORE_TSTR(__FILE__),__LINE__,PRIV_HSTORE_TSTR(#NAME),FLAGS,PRIV_HSTORE_TSTR(FMTSTR),decltype(::hobbes::storage::makePayloadTypes(ARGS))>::id;}), ## ARGS)
 
 #define HSTORE(GROUP, NAME, ARGS...)       APPLY_HSTORE_STMT(GROUP, NAME, 0,     "", ## ARGS)
 #define HLOG(GROUP, NAME, FMTSTR, ARGS...) APPLY_HSTORE_STMT(GROUP, NAME, 1, FMTSTR, ## ARGS)
@@ -1714,6 +2273,16 @@ struct statement {
   bytes       type;
 
   inline bool isLog() const { return (this->flags & 1) == 1; }
+
+  inline bool operator==(const statement& rhs) const {
+    return this->name   == rhs.name   &&
+           this->flags  == rhs.flags  &&
+           this->fmtstr == rhs.fmtstr &&
+           this->file   == rhs.file   &&
+           this->line   == rhs.line   &&
+           this->id     == rhs.id     &&
+           this->type   == rhs.type;
+  }
 };
 typedef std::vector<statement> statements;
 
@@ -1728,14 +2297,14 @@ inline size_t rs(const reader::MetaData& md, size_t o, size_t n, uint8_t* b) {
 
 template <typename T>
   size_t r(const reader::MetaData& md, size_t o, T* t) {
-    return rs(md, o, sizeof(T), (uint8_t*)t);
+    return rs(md, o, sizeof(T), reinterpret_cast<uint8_t*>(t));
   }
 
 inline size_t rs(const reader::MetaData& md, size_t o, std::string* s) {
   size_t n = 0;
   o = r(md, o, &n);
   s->resize(n);
-  return rs(md, o, n, (uint8_t*)s->data());
+  return rs(md, o, n, reinterpret_cast<uint8_t*>(&(*s)[0]));
 }
 
 inline size_t rs(const reader::MetaData& md, size_t o, bytes* s) {
@@ -1747,40 +2316,122 @@ inline size_t rs(const reader::MetaData& md, size_t o, bytes* s) {
 
 class Transaction {
 public:
-  Transaction(const uint8_t* data, size_t datasz) : data(data), datasz(datasz), i(0) {
+  // a persistent transaction to retain log data between consumer sessions (if necessary)
+  Transaction(std::string fname) : fd(-1), file_size(0), map_size(0), data(0), data_size(0), wi(0), ri(0) {
+    for (size_t i = 0; i < fname.size(); ++i) {
+      switch (fname[i]) {
+      case '/': fname[i]='_'; break;
+      case ':': fname[i]='_'; break;
+      case '[': fname[i]='_'; break;
+      case ']': fname[i]='_'; break;
+      default:                break;
+      }
+    }
+    fname = "." + fname + ".txn";
+    this->fd = ::open(fname.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+
+    if (this->fd < 0) {
+      throw std::runtime_error("Unable to open transaction persistence file: " + fname + " (" + std::string(strerror(errno)) + ")");
+    }
+
+    struct stat sb;
+    if (::fstat(this->fd, &sb) < 0) {
+      close(this->fd);
+      throw std::runtime_error("Failed to stat transaction persistence file: " + fname + " (" + std::string(strerror(errno)) + ")");
+    }
+    truncMapFile(sb.st_size == 0 ? /*1MB*/1048576 : sb.st_size);
+  }
+
+  // a non-persistent transaction over constant data (just used by remote consumers)
+  Transaction(const uint8_t* d, size_t len) : fd(-1), file_size(len), map_size(len), data(const_cast<uint8_t*>(d)), data_size(0), wi(0), ri(0) {
+    this->data_size = &this->map_size;
   }
 
   bool canRead(size_t x) const {
-    return (this->i+x) <= this->datasz;
+    return (this->ri+x) <= *this->data_size;
   }
 
   const uint8_t* ptr() const {
-    return this->data + this->i;
+    return this->data + this->ri;
   }
 
   void skip(size_t d) {
-    this->i += d;
+    this->ri += d;
   }
 
   template <typename T>
     const T* read() {
-      auto p = (const T*)ptr();
+      auto p = reinterpret_cast<const T*>(ptr());
       skip(sizeof(T));
       return p;
     }
 
   size_t size() const {
-    return this->datasz;
+    return *this->data_size;
+  }
+
+  void clear() {
+    *this->data_size = 0;
+    this->wi = 0;
+    this->ri = 0;
+  }
+
+  bool readToCompletion(rpipe& p, size_t timeoutNS, const std::function<void()>& timeoutF) {
+    static const size_t blockSize = 1024;
+
+    if (this->wi + blockSize >= this->file_size) {
+      truncMapFile(this->file_size + /*1MB*/1048576);
+    }
+
+    uint8_t txnFlag = 0;
+    this->wi += p.read(this->data + this->wi, blockSize, &txnFlag, timeoutNS, timeoutF);
+    *this->data_size = this->wi;
+
+    switch (txnFlag) {
+    case PRIV_HSTORE_PAGE_STATE_ROLLBACK:
+      clear();
+      return false;
+    case PRIV_HSTORE_PAGE_STATE_COMMIT: {
+      return true;
+    }
+    default:
+      return false;
+    }
   }
 private:
-  const uint8_t* data;
-  size_t         datasz;
-  size_t         i;
+  int    fd;
+  size_t file_size;
+  size_t map_size;
+
+  uint8_t* data;
+  size_t*  data_size;
+  size_t   wi;
+  size_t   ri;
+
+  void truncMapFile(size_t sz) {
+    if (::ftruncate(this->fd, sz) == -1) {
+      throw std::runtime_error("Failed to expand transaction persistence file");
+    }
+    this->file_size = sz;
+
+    if (sz > this->map_size) {
+      if (this->data) { ::munmap(this->data-sizeof(size_t), this->map_size); }
+
+      this->map_size = align<size_t>(sz, /*10MB*/10485760);
+      this->data = reinterpret_cast<uint8_t*>(mmap(0, this->map_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, this->fd, 0));
+      if (this->data == MAP_FAILED) {
+        throw std::runtime_error("Failed to map transaction persistence file");
+      }
+      this->data_size = reinterpret_cast<size_t*>(this->data);
+      this->data      += sizeof(size_t);
+    }
+  }
 };
 
-inline void runReadProcess(const QueueConnection& qc, const std::function<std::function<void(Transaction&)>(PipeQOS, CommitMethod, const statements&)>& initF) {
-  reader rd(qc);
-  rpipe  p(&rd);
+inline void runReadProcessWithTimeout(const QueueConnection& qc, const WaitPolicy wp, const std::function<std::function<void(Transaction&)>(PipeQOS, CommitMethod, const statements&)>& initF, size_t timeoutNS, const std::function<void()>& timeoutF) {
+  Transaction txn(qc.shmname);
+  reader      rd(qc, wp);
+  rpipe       p(&rd);
 
   // initialize
   reader::MetaData md = rd.meta();
@@ -1792,7 +2443,7 @@ inline void runReadProcess(const QueueConnection& qc, const std::function<std::f
   }
 
   // read group flags/settings
-  int qos, cm;
+  int qos=0, cm=0;
   o = r(md, o, &qos);
   o = r(md, o, &cm);
 
@@ -1813,33 +2464,19 @@ inline void runReadProcess(const QueueConnection& qc, const std::function<std::f
     ss.push_back(s);
   }
 
-  auto txnF = initF((PipeQOS)qos, (CommitMethod)cm, ss);
+  auto txnF = initF(static_cast<PipeQOS>(qos), static_cast<CommitMethod>(cm), ss);
 
   // read transactions and call back into user code
-  bytes txn;
   while (true) {
-    static const size_t blockSize = 1024;
-
-    size_t i = txn.size();
-    txn.resize(txn.size() + blockSize);
-
-    uint8_t txnFlag = 0;
-    txn.resize(txn.size() - (blockSize - p.read(&txn[i], blockSize, &txnFlag)));
-
-    switch (txnFlag) {
-    case _HSTORE_PAGE_STATE_ROLLBACK:
+    if (txn.readToCompletion(p, timeoutNS, timeoutF)) {
+      txnF(txn);
       txn.clear();
-      break;
-    case _HSTORE_PAGE_STATE_COMMIT: {
-      Transaction txnr(&txn[0], txn.size());
-      txnF(txnr);
-      txn.clear();
-      break;
-    }
-    default:
-      break;
     }
   }
+}
+
+inline void runReadProcess(const QueueConnection& qc, const WaitPolicy wp, const std::function<std::function<void(Transaction&)>(PipeQOS, CommitMethod, const statements&)>& initF) {
+  runReadProcessWithTimeout(qc, wp, initF, 0, [](){});
 }
 
 }}

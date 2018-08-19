@@ -19,7 +19,7 @@ template <typename T, typename ... Args>
     typedef T object_type;
 
     const std::shared_ptr<T>& get(const std::function<T*(Args...)>& mk, const Args&... args) {
-      std::lock_guard<std::mutex> lock(mutex);
+      std::lock_guard<std::recursive_mutex> lock(mutex);
       auto k = std::tuple<Args...>(args...);
       const auto& r = this->values[k];
       if (r) return r;
@@ -30,7 +30,7 @@ template <typename T, typename ... Args>
 
     size_t compact() {
       size_t c = 0;
-      std::lock_guard<std::mutex> lock(mutex);
+      std::lock_guard<std::recursive_mutex> lock(mutex);
       for (typename Values::iterator v = this->values.begin(); v != this->values.end();) {
         if (v->second.use_count() == 1) {
           this->values.erase(v++);
@@ -42,7 +42,7 @@ template <typename T, typename ... Args>
       return c;
     }
   private:
-    std::mutex mutex;
+    std::recursive_mutex mutex;
     typedef std::unordered_map<std::tuple<Args...>, std::shared_ptr<T>, genHash<std::tuple<Args...>>> Values;
     Values values;
   };
@@ -94,6 +94,10 @@ template <typename ... UniqueRefcMaps>
     }
   };
 
+template <typename V, typename U> V scast (U x)        { return static_cast<V>(x); }
+template <typename V, typename U> V rcast (U x)        { return reinterpret_cast<V>(x); }
+template <typename V, typename U> V crcast(const U* x) { return reinterpret_cast<V>(const_cast<U*>(x)); }
+
 template <typename T>
   T align(T x, T m) {
     if (m == 0 || (x % m) == 0) {
@@ -106,7 +110,7 @@ template <typename T>
 template <typename T, typename S>
   const T* is(const S* s) {
     if (s && s->case_id() == T::type_case_id) {
-      return (const T*)s;
+      return rcast<const T*>(s);
     } else {
       return 0;
     }
@@ -115,7 +119,7 @@ template <typename T, typename S>
 template <typename T, typename S>
   T* isM(S* s) {
     if (s && s->case_id() == T::type_case_id) {
-      return (T*)s;
+      return rcast<T*>(s);
     } else {
       return 0;
     }

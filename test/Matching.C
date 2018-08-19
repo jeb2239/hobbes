@@ -1,5 +1,7 @@
 
 #include <hobbes/hobbes.H>
+#include <hobbes/util/perf.H>
+#include <thread>
 #include "test.H"
 
 using namespace hobbes;
@@ -112,6 +114,7 @@ TEST(Matching, Regex) {
   EXPECT_EQ(c().compileFn<int()>("match \"a\\n\" with | '[^a-z]\\n' -> 0 | _ -> 1")(), 1);
   EXPECT_EQ(c().compileFn<int()>("match \"0\\n\" with | '[^a-z]\\n' -> 0 | _ -> 1")(), 0);
   EXPECT_EQ(c().compileFn<int()>("match \"8675309\" with | '[0-9]+' -> 0 | _ -> 1")(), 0);
+  EXPECT_TRUE(c().compileFn<bool()>("\"b\" matches 'a(z)|b'")());
 
   // verify correct match/fallback logic with regexes and multiple columns
   EXPECT_EQ(c().compileFn<int()>("match \"ab\" 1 with | 'a(b|c)' 1 -> 1 | 'ab' 2 -> 2 | 'ac' 3 -> 3 | _ _ -> 4")(), 1);
@@ -121,15 +124,19 @@ TEST(Matching, Regex) {
   EXPECT_EQ(c().compileFn<int()>("match \"foo\" 42 with | 'a(b|c)' 1 -> 1 | 'ab' 2 -> 2 | 'ac' 3 -> 3 | _ _ -> 4")(), 4);
 
   // verify unreachable row determination
+  bool unreachableExn = false;
   try {
     c().compileFn<int()>("match \"foo123ooo\" with | '123|foo.*' -> 0 | 'foo.*' -> 1 | _ -> -1");
-    EXPECT_FALSE("failed to determine expected unreachable regex row");
   } catch (std::exception&) {
-    EXPECT_TRUE(true);
+    unreachableExn = true;
   }
+  EXPECT_TRUE(unreachableExn && "failed to determine expected unreachable regex row");
 
   // verify binding in regex matches
   EXPECT_EQ(makeStdString(c().compileFn<const array<char>*()>("match \"foobar\" with | 'f(?<os>o*)bar' -> os | _ -> \"???\"")()), "oo");
+
+  // verify misc expressions
+  EXPECT_EQ(c().compileFn<int()>("match \"Roba\" with | 'Ka|Roba|Raa' -> 1 | _ -> 0")(), 1);
 }
 
 TEST(Matching, Support) {
@@ -142,6 +149,14 @@ TEST(Matching, Support) {
 TEST(Matching, Tests) {
   EXPECT_TRUE(c().compileFn<bool()>("\"8675309\" matches '[0-9]+'")());
   EXPECT_TRUE(c().compileFn<bool()>("(1,2) matches (1,2)")());
+
+  // make sure that tests with inaccessible names are rejected
+  EXPECT_EXCEPTION(c().compileFn<bool()>("\"JIMMY\" matches JIMMY")());
+  EXPECT_EXCEPTION(c().compileFn<bool()>("[{x=just(\"JIMMY\")}] matches [{x=|1=JIMMY|}]")());
+  
+  // make sure that tests with inaccessible _ names are allowed
+  EXPECT_TRUE(c().compileFn<bool()>("\"JIMMY\" matches _")());
+  EXPECT_TRUE(c().compileFn<bool()>("[{x=just(\"JIMMY\")}] matches [{x=|1=_|}]")());
 }
 
 TEST(Matching, Functions) {
@@ -161,7 +176,7 @@ TEST(Matching, Monadic) {
 
 TEST(Matching, matchFromStringToBoolIsBool) {
   bool r = true;
-  EXPECT_EQ(1, *(uint8_t*)(&r));
+  EXPECT_EQ(1, *reinterpret_cast<uint8_t*>(&r));
 
   r = c().compileFn<bool()>(
     "match \"1\" \"2\" \"3\" \"4\" with\n"
@@ -171,7 +186,7 @@ TEST(Matching, matchFromStringToBoolIsBool) {
     "| \"1\" _ _ _             -> true\n"
     "| _ _ _ _                 -> false"
   )();
-  EXPECT_EQ(1, *(uint8_t*)(&r));
+  EXPECT_EQ(1, *reinterpret_cast<uint8_t*>(&r));
   EXPECT_TRUE(r);  
 }
 
@@ -184,7 +199,7 @@ TEST(Matching, matchFromIntToBoolIsBool) {
     "| 1 _ _ _ -> true\n"
     "| _ _ _ _ -> false"
   );
-  EXPECT_TRUE(1 == *(uint8_t*)(&r));
+  EXPECT_TRUE(1 == *reinterpret_cast<uint8_t*>(&r));
   EXPECT_TRUE(r);  
 }
 
@@ -197,8 +212,67 @@ TEST(Matching, matchFromStringToIntIsCorrect) {
     "| \"1\" _ _ _             -> 9\n"
     "| _ _ _ _                 -> 0"
   )();
-  EXPECT_EQ(86, *(uint32_t*)(&r));
+  EXPECT_EQ(uint32_t(86), *reinterpret_cast<uint32_t*>(&r));
   EXPECT_TRUE(r);  
 }
 
+TEST(Matching, largeRegexDFAFinishesReasonablyQuickly) {
+  auto t0 = tick();
+  c().compileFn<void()>(
+    "match \"a\" with\n"
+    "| '.*MOGUSJGTCA' where false -> ()\n"
+    "| '.+' where false -> ()\n"
+    "| '..........' where false -> ()\n"
+    "| '..AP.+' where false -> ()\n"
+    "| '..GU.+' where false -> ()\n"
+    "| '.?%.+' where false -> ()\n"
+    "| '.?%..AP.+' where false -> ()\n"
+    "| '.?%..GU.+' where false -> ()\n"
+    "| '.?%ME.+' where false -> ()\n"
+    "| '.?&.+' where false -> ()\n"
+    "| '.?&..AP.+' where false -> ()\n"
+    "| '.?&..GU.+' where false -> ()\n"
+    "| '.?&ME.+' where false -> ()\n"
+    "| '.?[%&].+' where false -> ()\n"
+    "| '.?[%&].+1==.?[%&].+' where false -> ()\n"
+    "| '05DVAAAB9' where false -> ()\n"
+    "| 'IMEAT_AXXBCD_ZM_ABCDEF' where false -> ()\n"
+    "| 'IMEAT_AXX_UVW_ABCDEF' where false -> ()\n"
+    "| 'IMEAT_AXXDCB_DE_ABCDEF' where false -> ()\n"
+    "| 'IMEAT_JWEWQP_DE_ABCDEF' where false -> ()\n"
+    "| _ -> ()\n"
+  )();
+
+  EXPECT_TRUE(size_t(tick()-t0) < 1UL*60*60*1000*1000*1000);
+}
+
+TEST(Matching, noRaceInterpMatch) {
+  c().alwaysLowerPrimMatchTables(true);
+  c().buildInterpretedMatches(true);
+  auto f = c().compileFn<int(const std::string&)>("x",
+    "match x with\n"
+    "| \"foo\" -> 0\n"
+    "| \"bar\" -> 1\n"
+    "| _       -> 2"
+  );
+  size_t wrongMatches = 0;
+  std::vector<std::thread*> ps;
+  for (size_t p = 0; p < 10; ++p) {
+    ps.push_back(new std::thread(([&]() {
+      auto t0 = tick();
+      while (wrongMatches == 0 && size_t(tick()-t0) < 1UL*1000*1000*1000) {
+        if (f("foo") != 0) {
+          ++wrongMatches;
+        }
+        if (f("bar") != 1) {
+          ++wrongMatches;
+        }
+        hobbes::resetMemoryPool();
+      }
+    })));
+  }
+  for (auto p : ps) { p->join(); delete p; }
+  EXPECT_EQ(wrongMatches, size_t(0));
+  c().buildInterpretedMatches(false);
+}
 

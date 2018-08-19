@@ -2,11 +2,11 @@
 #ifndef HOBBES_LANG_TYPELIFT_HPP_INCLUDED
 #define HOBBES_LANG_TYPELIFT_HPP_INCLUDED
 
+#include <hobbes/reflect.H>
 #include <hobbes/lang/type.H>
 #include <hobbes/util/array.H>
 #include <hobbes/util/ptr.H>
 #include <hobbes/util/str.H>
-#include <hobbes/util/variant.H>
 #include <hobbes/util/preprocessor.H>
 #include <string>
 #include <vector>
@@ -58,14 +58,6 @@ extern nulltypedb nulltdb;
  * C++ representations for common hobbes types
  *************/
 
-// allow opaque type aliases to reuse basic types
-template <const char* TN, typename T>
-  struct typeAlias {
-    typeAlias(const T& v) : value(v) { }
-    typeAlias() { }
-    T value;
-  };
-
 // allow the generic definition of simple recursive types
 template <typename T>
   struct recursive {
@@ -81,8 +73,8 @@ template <typename T>
   struct array {
     typedef array<T>* ptr;
 
-    long size;
-    T    data[1]; // unknown length, bytes inline with this structure
+    size_t size;
+    T      data[1]; // unknown length, bytes inline with this structure
   };
 template <typename T> const T* begin(const array<T>* d) { return d->data; }
 template <typename T> const T* end  (const array<T>* d) { return d->data + d->size; }
@@ -128,7 +120,7 @@ template <typename T, bool InStruct> struct defaultLift<T&,       InStruct> : pu
 template <typename T, bool InStruct>
   struct defaultLift<T*, InStruct> {
     static MonoTypePtr type(typedb& tenv) {
-      return tenv.opaquePtrMonoType(typeid(T), 0, false);
+      return tenv.opaquePtrMonoType(typeid(T*), 0, false);
     }
   };
 template <typename T, bool InStruct, typename P>
@@ -144,12 +136,25 @@ template <>
 template <bool InStruct>
   struct lift<std::string*, InStruct> { static MonoTypePtr type(typedb&) { return OpaquePtr::make("std::string", InStruct ? sizeof(std::string) : 0, InStruct); } };
 
+// lift std::vector to a parametric type
+template <typename T>
+  struct liftVector {
+    static MonoTypePtr type(typedb& tenv) {
+      return tapp(primty("vector", tabs(str::strings("t", "s", "c"), FixedArray::make(primty("byte"), tvar("c")))), list(lift<T, true>::type(tenv), tlong(sizeof(T)), tlong(sizeof(std::vector<T>))));
+    }
+  };
+
+template <typename T>
+  struct lift<std::vector<T>, true> : public liftVector<T> { };
+template <typename T>
+  struct lift<std::vector<T>*, false> : public liftVector<T> { };
+
 // we can lift a list of T as ^x.()+T*x, represented by a pointer whether top-level or inline
 template <typename T>
   struct liftSeq {
     static MonoTypePtr type(typedb& tenv) {
       // ^x.()+T*x
-      return Recursive::make("x", Variant::make(list(Variant::Member(".f0", primty("unit"), 0), Variant::Member(".f1", tuple(list(lift<T, true>::type(tenv), tvar("x"))), 1))));
+      return Recursive::make("x", Variant::make(list(Variant::Member(".f0", primty("unit"), 0), Variant::Member(".f1", tuplety(list(lift<T, true>::type(tenv), tvar("x"))), 1))));
     }
   };
 
@@ -232,17 +237,17 @@ template <typename T>
   inline MonoTypePtr prim() { return lift<T, false>::type(nulltdb); }
 
 // introduce opaque (named) alias types
-template <const char* TN, typename T, bool InStruct>
-  struct lift< typeAlias<TN, T>, InStruct > {
+template <typename T, bool InStruct>
+  struct lift<T, InStruct, typename tbool<T::is_hmeta_alias>::type> {
     static MonoTypePtr type(typedb& tenv) {
-      return tenv.defineNamedType(TN, str::seq(), lift<T, InStruct>::type(tenv));
+      return tenv.defineNamedType(T::name(), str::seq(), lift<typename T::type, InStruct>::type(tenv));
     }
   };
 
-template <const char* TN, typename T, bool InStruct>
-  struct lift< typeAlias<TN, T>*, InStruct > {
+template <typename T, bool InStruct>
+  struct lift<T*, InStruct, typename tbool<T::is_hmeta_alias>::type> {
     static MonoTypePtr type(typedb& tenv) {
-      return tenv.defineNamedType(TN, str::seq(), lift<T*, InStruct>::type(tenv));
+      return tenv.defineNamedType(T::name(), str::seq(), lift<typename T::type*, InStruct>::type(tenv));
     }
   };
 
@@ -268,7 +273,7 @@ template <typename T, size_t N, bool InStruct>
 template <typename T, size_t N, bool InStruct>
   struct lift<const T[N], InStruct> : public liftFixedArray<T, N> { };
 
-// generated lifts for C functions
+// lifts for C functions
 template <typename ... Ts>
   struct typeSeq {
     static void accum(MonoTypes*, typedb&) { }
@@ -302,6 +307,35 @@ template <typename R, typename ... Args>
 template <typename R, typename ... Args>
   struct lift<R(*)(Args...), false> : public liftFunction<R(Args...)> { };
 
+// lifts for closures
+template <typename F>
+  struct closure { };
+template <typename R, typename ... Args>
+  struct closure<R(Args...)> {
+    typedef R (*F)(const void*,Args...);
+    F    f;
+    char data[1];
+
+    R operator()(const Args&... args) const {
+      return this->f(&this->data[0], args...);
+    }
+  };
+
+template <typename R, typename ... Args>
+  struct liftClosure {
+    static MonoTypePtr type(typedb& tenv) {
+      auto args = typeSeq<Args...>::liftSeq(tenv);
+      if (args.size() == 0) {
+        return closty(list(primty("unit")), lift<R, false>::type(tenv));
+      } else {
+        return closty(args, lift<R, false>::type(tenv));
+      }
+    }
+  };
+
+template <bool InStruct, typename R, typename ... Args>
+  struct lift<closure<R(Args...)>*, InStruct> : public liftClosure<R, Args...> { };
+
 // lift variant types
 // -- first by lifting constructor names
 //       if label(N,T) then the constructor name is N, else it's derived from its position in the total sum type
@@ -310,6 +344,7 @@ template <const char* TN, typename T>
   struct label {
     typedef T type;
     T value;
+    label() : value() { }
     label(const T& x) : value(x) { }
     static std::string name() { return TN; }
   };
@@ -364,49 +399,14 @@ template <typename ... CTys>
 template <typename ... CTys>
   struct lift< variant<CTys...>*, false > : public liftVariant< variant<CTys...> > { };
 
-// allow basic reflective enumerations
-#define HOBBES_ENUM_CTOR(n, v) n = v,
-#define HOBBES_ENUM_METAENT(n, v) r.push_back(MetaEnt(#n, v));
-
-#define DEFINE_ENUM(T, CTORS...) \
-  struct T { \
-    enum Enum : unsigned int { \
-      _HOBPP_MAP(HOBBES_ENUM_CTOR, CTORS) \
-    }; \
-    explicit operator bool() const = delete; \
-    \
-    typedef void is_hobbes_enum; \
-    typedef std::pair<std::string, unsigned int> MetaEnt; \
-    typedef std::vector<MetaEnt> MetaSeq; \
-    \
-    static MetaSeq meta() { \
-      MetaSeq r; \
-      _HOBPP_MAP(HOBBES_ENUM_METAENT, CTORS) \
-      return r; \
-    } \
-    \
-    Enum value; \
-    operator Enum() const { \
-      return this->value; \
-    } \
-    T& operator=(Enum x) { \
-      this->value = x; \
-      return *this; \
-    } \
-    T() : value(Enum()) { } \
-    T(const T& x) : value(x.value) { } \
-    T(Enum x) : value(x) { } \
-  }
-
+// lift reflective enumerations
 template <typename T>
   struct liftEnum {
     static MonoTypePtr type(typedb&) {
       Variant::Members vms;
 
-      typedef typename T::MetaSeq MS;
-      MS ms = T::meta();
-      for (typename MS::const_iterator m = ms.begin(); m != ms.end(); ++m) {
-        vms.push_back(Variant::Member(m->first, Prim::make("unit"), (unsigned int)(m->second)));
+      for (const auto& m : T::meta()) {
+        vms.push_back(Variant::Member(m.first, Prim::make("unit"), scast<uint32_t>(m.second)));
       }
 
       return Variant::make(vms);
@@ -414,38 +414,63 @@ template <typename T>
   };
 
 template <typename T>
-  struct lift<T, true, typename T::is_hobbes_enum> : public liftEnum<T> { };
+  struct lift<T, true, typename tbool<T::is_hmeta_enum>::type> : public liftEnum<T> { };
 template <typename T>
-  struct lift<T*, false, typename T::is_hobbes_enum> : public liftEnum<T> { };
+  struct lift<T*, false, typename tbool<T::is_hmeta_enum>::type> : public liftEnum<T> { };
 
-// allow basic reflective structs
-#define HOBBES_STRUCT_FIELD(t, n) t n;
-#define HOBBES_META_FIELD(t, n) r.push_back(::hobbes::Record::Member(#n, ::hobbes::lift<t, true>::type(tenv), offsetof(SelfT, n)));
+// lift plain tuples
+template <typename ... Fields>
+  struct liftTuple {
+    static void addFields(size_t, Record::Members*, typedb&) { }
+    static MonoTypePtr type(typedb& tenv) { return Prim::make("unit"); }
+  };
+template <typename Field, typename ... Fields>
+  struct liftTuple<Field, Fields...> {
+    static void addFields(size_t i, Record::Members* ms, typedb& tenv) {
+      ms->push_back(Record::Member(".f"+str::from(i), lift<Field, true>::type(tenv)));
+      liftTuple<Fields...>::addFields(i+1, ms, tenv);
+    }
+    static MonoTypePtr type(typedb& tenv) {
+      Record::Members ms;
+      addFields(0, &ms, tenv);
+      return Record::make(ms);
+    }
+  };
 
-#define DEFINE_STRUCT(T, FIELDS...) \
-  struct T { \
-    _HOBPP_MAP(HOBBES_STRUCT_FIELD, FIELDS) \
-    \
-    typedef void is_hobbes_struct; \
-    typedef T SelfT; \
-    static ::hobbes::MonoTypePtr meta(::hobbes::typedb& tenv) { \
-      ::hobbes::Record::Members r; \
-      _HOBPP_MAP(HOBBES_META_FIELD, FIELDS) \
-      return ::hobbes::Record::make(r); \
-    } \
-  }
+template <typename ... Fields>
+  struct lift<tuple<Fields...>, true> : public liftTuple<Fields...> { };
+template <typename ... Fields>
+  struct lift<tuple<Fields...>*, false> : public liftTuple<Fields...> { };
+
+// lift reflective structs
+struct inferFieldTypeF {
+  Record::Members* ms;
+  size_t           o;
+  typedb*          tenv;
+  inferFieldTypeF(Record::Members* ms, typedb* tenv) : ms(ms), o(0), tenv(tenv) { }
+
+  template <typename T>
+    void visit(const char* fname) {
+      this->o = align<size_t>(this->o, alignof(T));
+      ms->push_back(Record::Member(fname, lift<T, true>::type(*this->tenv), this->o));
+      this->o += sizeof(T);
+    }
+};
 
 template <typename T>
   struct liftStruct {
     static MonoTypePtr type(typedb& tenv) {
-      return T::meta(tenv);
+      Record::Members ms;
+      inferFieldTypeF f(&ms, &tenv);
+      T::meta(f);
+      return Record::make(ms);
     }
   };
 
 template <typename T>
-  struct lift<T, true, typename T::is_hobbes_struct> : public liftStruct<T> { };
+  struct lift<T, true, typename tbool<T::is_hmeta_struct>::type> : public liftStruct<T> { };
 template <typename T>
-  struct lift<T*, false, typename T::is_hobbes_struct> : public liftStruct<T> { };
+  struct lift<T*, false, typename tbool<T::is_hmeta_struct>::type> : public liftStruct<T> { };
 
 // perhaps some lifts might depend on their C++ values
 template <typename T>

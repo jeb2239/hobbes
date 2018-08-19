@@ -3,6 +3,7 @@
 #include <hobbes/ipc/prepl.H>
 #include <hobbes/util/codec.H>
 #include <hobbes/util/os.H>
+#include <sstream>
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -24,7 +25,7 @@ void execProcess(const std::string& cmd) {
   if (args.size() == 0) return;
 
   argv.push_back(0);
-  execv(args[0].c_str(), (char* const*)&argv[0]);
+  execv(args[0].c_str(), const_cast<char* const*>(&argv[0]));
 }
 
 void spawn(const std::string& cmd, proc* p) {
@@ -81,7 +82,7 @@ void spawn(const std::string& cmd, proc* p) {
         read(c2p[0], &success, sizeof(success));
         if (success != 1) {
           std::ostringstream ss;
-          ss << std::string((const char*)&success, sizeof(success));
+          ss << std::string(reinterpret_cast<const char*>(&success), sizeof(success));
           while (true) {
             char buf[4096];
             ssize_t rc = read(c2p[0], buf, sizeof(buf));
@@ -136,20 +137,21 @@ void dbglog(const std::string& msg) {
   if (machineREPLLogFD > 0) {
     char buf[256];
     time_t t = ::time(0);
-    strftime(buf, sizeof(buf), "%H:%M:%S", localtime((time_t*)&t));
+    strftime(buf, sizeof(buf), "%H:%M:%S", localtime(reinterpret_cast<time_t*>(&t)));
 
     std::string logmsg = std::string(buf) + ": " + msg + "\n";
     write(machineREPLLogFD, logmsg.c_str(), logmsg.size());
   }
 }
 
-#define CMD_REFINE_VNAME    ((int)0)
-#define CMD_PRECOMPILE_EXPR ((int)1)
-#define CMD_REPL_EVAL       ((int)2)
-#define CMD_REPL_TYPEOF     ((int)3)
-#define CMD_REPL_TENV       ((int)4)
-#define CMD_REPL_DEFINE     ((int)5)
-#define CMD_COUNT           ((int)6) /* must be the last value to accurately count how many 'commands' there are */
+#define CMD_REFINE_VNAME    static_cast<int>(0)
+#define CMD_PRECOMPILE_EXPR static_cast<int>(1)
+#define CMD_REPL_EVAL       static_cast<int>(2)
+#define CMD_REPL_TYPEOF     static_cast<int>(3)
+#define CMD_REPL_TENV       static_cast<int>(4)
+#define CMD_REPL_DEFINE     static_cast<int>(5)
+#define CMD_REPL_SEARCH     static_cast<int>(6)
+#define CMD_COUNT           static_cast<int>(7) /* must be the last value to accurately count how many 'commands' there are */
 
 void runMachineREPLStep(cc* c) {
   // our local state
@@ -176,7 +178,7 @@ void runMachineREPLStep(cc* c) {
   
       ty.clear();
       encode(fexp->type()->monoType(), &ty);
-      fdwrite(STDOUT_FILENO, (int)1);
+      fdwrite(STDOUT_FILENO, static_cast<int>(1));
       fdwrite(STDOUT_FILENO, ty);
       break;
     }
@@ -195,8 +197,8 @@ void runMachineREPLStep(cc* c) {
       std::vector<uint8_t> etyd;
       encode(requireMonotype(c->unsweetenExpression(e)->type()), &etyd);
 
-      fdwrite(STDOUT_FILENO, (int)1);
-      fdwrite(STDOUT_FILENO, (int)(thunkFs.size() - 1));
+      fdwrite(STDOUT_FILENO, static_cast<int>(1));
+      fdwrite(STDOUT_FILENO, static_cast<int>(thunkFs.size() - 1));
       fdwrite(STDOUT_FILENO, etyd);
       break;
     }
@@ -207,16 +209,27 @@ void runMachineREPLStep(cc* c) {
 
       dbglog("eval '" + expr + "'");
 
+      // buffer the result to remove any accidental internal terminators
+      std::ostringstream ss;
+      auto stdoutbuffer = std::cout.rdbuf(ss.rdbuf());
       try {
         c->compileFn<void()>("print(" + expr + ")")();
-        std::cout << std::flush;
         resetMemoryPool();
       } catch (std::exception& ex) {
         std::string msg(ex.what());
         dbglog("*** " + msg);
-        fdwrite(STDOUT_FILENO, msg.data(), msg.size());
+        std::cout << msg;
       }
-      fdwrite(STDOUT_FILENO, (char)0);
+      std::cout.rdbuf(stdoutbuffer);
+
+      // write buffered output to stdout without internal terminators
+      for (char c : ss.str()) {
+        std::cout << (c==0?'?':c);
+      }
+      std::cout << std::flush;
+
+      // now we can send the result terminator
+      fdwrite(STDOUT_FILENO, static_cast<char>(0));
       break;
     }
     case CMD_REPL_TYPEOF: {
@@ -234,7 +247,7 @@ void runMachineREPLStep(cc* c) {
         dbglog("*** " + msg);
         fdwrite(STDOUT_FILENO, msg.data(), msg.size());
       }
-      fdwrite(STDOUT_FILENO, (char)0);
+      fdwrite(STDOUT_FILENO, static_cast<char>(0));
       break;
     }
     case CMD_REPL_TENV: {
@@ -246,7 +259,7 @@ void runMachineREPLStep(cc* c) {
         std::cout << vns[i] << "::" << vtys[i] << "\n";
       }
       std::cout << std::flush;
-      fdwrite(STDOUT_FILENO, (char)0);
+      fdwrite(STDOUT_FILENO, static_cast<char>(0));
       break;
     }
     case CMD_REPL_DEFINE: {
@@ -268,7 +281,45 @@ void runMachineREPLStep(cc* c) {
         dbglog("*** " + msg);
         fdwrite(STDOUT_FILENO, msg.data(), msg.size());
       }
-      fdwrite(STDOUT_FILENO, (char)0);
+      fdwrite(STDOUT_FILENO, static_cast<char>(0));
+      break;
+    }
+    case CMD_REPL_SEARCH: {
+      // search for paths from a source expression to a destination type
+      std::string expr, ty;
+      fdread(STDIN_FILENO, &expr);
+      fdread(STDIN_FILENO, &ty);
+
+      dbglog("search '" + expr + "' ? " + ty);
+
+      std::string msg;
+      try {
+        std::ostringstream ss;
+        auto ses = c->search(expr, ty);
+        if (ses.size() > 0) {
+          std::map<std::string, std::string> stbl;
+          for (const auto& se : ses) {
+            stbl[se.sym] = show(se.ty);
+          }
+
+          str::seqs cols;
+          cols.push_back(str::seq());
+          cols.push_back(str::seq());
+          cols.push_back(str::seq());
+          for (const auto& sse : stbl) {
+            cols[0].push_back(sse.first);
+            cols[1].push_back("::");
+            cols[2].push_back(sse.second);
+          }
+          str::printHeadlessLeftAlignedTable(ss, cols);
+        }
+        msg = ss.str();
+      } catch (std::exception& ex) {
+        msg = "*** " + std::string(ex.what());
+        dbglog(msg);
+      }
+      fdwrite(STDOUT_FILENO, msg.data(), msg.size());
+      fdwrite(STDOUT_FILENO, static_cast<char>(0));
       break;
     }
     default:
@@ -280,7 +331,7 @@ void runMachineREPLStep(cc* c) {
   } catch (std::exception& ex) {
     std::string exn = ex.what();
     dbglog("*** " + exn);
-    fdwrite(STDOUT_FILENO, (int)0);
+    fdwrite(STDOUT_FILENO, static_cast<int>(0));
     fdwrite(STDOUT_FILENO, exn);
   }
 }
@@ -332,7 +383,7 @@ void runMachineREPL(cc* c) {
 
   try {
     // dispatch stdin events to our line handler
-    hobbes::registerEventHandler(STDIN_FILENO, [](int, void* uc){runMachineREPLStep((cc*)uc);}, (void*)c);
+    hobbes::registerEventHandler(STDIN_FILENO, [](int, void* uc){runMachineREPLStep(reinterpret_cast<cc*>(uc));}, reinterpret_cast<void*>(c));
 
     // poll for events and dispatch them
     hobbes::runEventLoop();
@@ -340,6 +391,12 @@ void runMachineREPL(cc* c) {
     dbglog("**** " + std::string(ex.what()));
   }
   dbglog("ending machine REPL");
+}
+
+void procSearch(proc* p, const std::string& expr, const std::string& ty) {
+  fdwrite(p->write_fd, CMD_REPL_SEARCH);
+  fdwrite(p->write_fd, expr);
+  fdwrite(p->write_fd, ty);
 }
 
 void procDefine(proc* p, const std::string& vname, const std::string& x) {
@@ -396,7 +453,7 @@ void procRead(proc* p, std::ostream* o, uint64_t waitUS) {
         throw std::runtime_error("Read error, pipe stream ended");
       } else {
         // exit when we find the terminating byte
-        for (size_t i = 0; i < rc; ++i) {
+        for (size_t i = 0; i < size_t(rc); ++i) {
           if (buf[i] == 0) {
             o->write(buf, i);
             return;
@@ -409,7 +466,7 @@ void procRead(proc* p, std::ostream* o, uint64_t waitUS) {
 }
 
 MonoTypePtr refinedType(const proc& p, const std::string& fname, const MonoTypePtr& hasty) {
-  fdwrite(p.write_fd, (int)0);
+  fdwrite(p.write_fd, static_cast<int>(0));
   fdwrite(p.write_fd, fname);
   
   std::vector<unsigned char> ty;
@@ -438,7 +495,7 @@ PrepProcExpr procPrepareExpr(const proc& p, const ExprPtr& e) {
   std::vector<uint8_t> eb;
   encode(e, &eb);
 
-  fdwrite(p.write_fd, (int)1);
+  fdwrite(p.write_fd, static_cast<int>(1));
   fdwrite(p.write_fd, eb);
 
   int result = 0;

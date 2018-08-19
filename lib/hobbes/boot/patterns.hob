@@ -33,10 +33,9 @@ runLongDFA dfa s vs =
     st = dfa[s];
     v  = vs[st.reads];
     i  = bsearch(st.transitions, \td.td.0, v);
-    td = if (i == length(st.transitions)) then st.def else st.transitions[i].1
+    td = (if (i == length(st.transitions)) then st.def else st.transitions[i].1)
   in
-    case td of
-      |done:x=x, step:ns=runLongDFA(dfa, ns, vs)|
+    case td of |done:x=x, step:ns=runLongDFA(dfa, ns, vs)|
 
 // used by pattern matching to reduce states in the case of char arrays
 packCArrLong :: (Array a char) => (a, long) -> long
@@ -91,4 +90,28 @@ packCArrChar cs i =
     '\0'
   else
     (element(cs, i))
+
+// DFA interpretation specifically for large regular expressions
+nextRegexDFAState c cps i =
+  if (i == size(cps)) then
+    i
+  else if (c < cps[i].0.0) then
+    size(cps)
+  else if (c <= cps[i].0.1) then
+    i
+  else
+    nextRegexDFAState(c, cps, i+1)
+
+runRegexDFA cs i e s dfa =
+  if (i == e) then
+    dfa[s].acc
+  else
+    let
+      st = dfa[s].transitions;
+      ns = nextRegexDFAState(element(cs, i), st, 0L)
+    in
+      if (ns < size(st)) then
+        runRegexDFA(cs, i+1, e, st[ns].1, dfa)
+      else
+        (-1)
 

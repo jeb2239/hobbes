@@ -32,14 +32,21 @@ namespace hobbes {
 
 // the compiler
 cc::cc() :
+  readModuleFileF(&defReadModuleFile),
+  readModuleF(&defReadModule),
+  readExprDefnF(&defReadExprDefn),
+  readExprF(&defReadExpr),
+  drainingDefs(false),
+  unreachableMatchRowsPtr(nullptr),
+  runModInlinePass(true),
+  genInterpretedMatch(false),
+  checkMatchReachability(true),
+  lowerPrimMatchTables(false),
+  columnwiseMatches(false),
+  tenv(new TEnv()),
   objs(new Objs()),
-  readModuleFileF(&defReadModuleFile), readModuleF(&defReadModule), readExprDefnF(&defReadExprDefn), readExprF(&defReadExpr),
-  runModInlinePass(true), genInterpretedMatch(false), checkMatchReachability(true), lowerPrimMatchTables(false), unreachableMatchRowsPtr(nullptr),
-  booted(false), drainingDefs(false)
+  jit(this->tenv)
 {
-  // initially, we assume an empty type environment
-  this->tenv = TEnvPtr(new TEnv());
-
   // initialize the environment of primitive instructions
   initDefOperators(this);
 
@@ -91,6 +98,7 @@ cc::cc() :
 
   // support deconstructing variants (compile-time reflection on variants)
   this->tenv->bind(VariantDeconstructor::constraintName(), UnqualifierPtr(new VariantDeconstructor()));
+  this->tenv->bind(VariantAppP::constraintName(), UnqualifierPtr(new VariantAppP()));
 
   // support appending (appendable) types
   this->tenv->bind(AppendsToUnqualifier::constraintName(), UnqualifierPtr(new AppendsToUnqualifier()));
@@ -112,12 +120,15 @@ cc::cc() :
 
   // boot
   compileBootCode(*this);
-
-  this->booted = true;
 }
 
 cc::~cc() {
 }
+
+SearchEntries cc::search(const MonoTypePtr& src, const MonoTypePtr& dst) { return hobbes::search(*this, this->searchCache, src, dst); }
+SearchEntries cc::search(const ExprPtr&     e,   const MonoTypePtr& dst) { return hobbes::search(*this, this->searchCache, e, dst); }
+SearchEntries cc::search(const std::string& e,   const MonoTypePtr& dst) { return search(readExpr(e), dst); }
+SearchEntries cc::search(const std::string& e,   const std::string& t)   { return search(readExpr(e), readMonoType(t)); }
 
 ModulePtr cc::readModuleFile(const std::string& x) { return this->readModuleFileF(this, x); }
 void cc::setReadModuleFileFn(readModuleFileFn f) { this->readModuleFileF = f; }
@@ -130,6 +141,14 @@ void cc::setReadExprDefnFn(readExprDefnFn f) { this->readExprDefnF = f; }
 
 ExprPtr cc::readExpr(const std::string& x) { return this->readExprF(this, x); }
 void cc::setReadExprFn(readExprFn f) { this->readExprF = f; }
+MonoTypePtr cc::readMonoType(const std::string& x) {
+  ExprPtr e = readExpr("()::"+x);
+  if (const Assump* a = is<Assump>(e)) {
+    return a->ty()->monoType();
+  } else {
+    throw std::runtime_error("Couldn't parse as type: " + x);
+  }
+}
 
 ExprPtr cc::unsweetenExpression(const TEnvPtr& te, const ExprPtr& e) {
   return unsweetenExpression(te, "", e);
@@ -306,13 +325,15 @@ struct repTypeAliasesF : public switchTyFn {
   }
 
   MonoTypePtr with(const Prim* v) const {
-    auto td = this->ttyDefs.find(v->name());
-    if (td != this->ttyDefs.end()) {
-      if (td->second.first.size() == 0) {
-        return td->second.second;
+    if (!v->representation()) {
+      auto td = this->ttyDefs.find(v->name());
+      if (td != this->ttyDefs.end()) {
+        if (td->second.first.size() == 0) {
+          return td->second.second;
+        }
       }
     }
-    return c(v);
+    return Prim::make(v->name(), v->representation());
   }
 
   MonoTypePtr with(const TApp* v) const {
@@ -333,23 +354,6 @@ struct repTypeAliasesF : public switchTyFn {
 
     return MonoTypePtr(TApp::make(switchOf(v->fn(), *this), switchOf(v->args(), *this)));
   }
-
-  MonoTypePtr with(const OpaquePtr*  v) const { return c(v); }
-  MonoTypePtr with(const TVar*       v) const { return c(v); }
-  MonoTypePtr with(const TGen*       v) const { return c(v); }
-
-  MonoTypePtr with(const FixedArray* v) const { return MonoTypePtr(FixedArray::make(switchOf(v->type(), *this), switchOf(v->length(), *this))); }
-  MonoTypePtr with(const Array*      v) const { return MonoTypePtr(Array::make(switchOf(v->type(), *this))); }
-  MonoTypePtr with(const Variant*    v) const { return MonoTypePtr(Variant::make(switchOf(v->members(), *this))); }
-  MonoTypePtr with(const Record*     v) const { return MonoTypePtr(Record::make(switchOf(v->members(), *this))); }
-  MonoTypePtr with(const Func*       v) const { return MonoTypePtr(Func::make(switchOf(v->argument(), *this), switchOf(v->result(), *this))); }
-  MonoTypePtr with(const Exists*     v) const { return MonoTypePtr(Exists::make(v->absTypeName(), switchOf(v->absType(), *this))); }
-  MonoTypePtr with(const Recursive*  v) const { return MonoTypePtr(Recursive::make(v->recTypeName(), switchOf(v->recType(), *this))); }
-
-  MonoTypePtr with(const TString* v) const { return c(v); }
-  MonoTypePtr with(const TLong*   v) const { return c(v); }
- 
-  static MonoTypePtr c(const MonoType* v) { return MonoTypePtr(clone(v)); }
 };
 
 MonoTypePtr cc::replaceTypeAliases(const MonoTypePtr& ty) const {
@@ -372,10 +376,15 @@ MonoTypePtr cc::opaquePtrMonoType(const std::type_info& ti, unsigned int sz, boo
   if (t != this->typeAliases.end() && hasPointerRep(t->second)) {
     return requireMonotype(t->second);
   } else {
-    this->objs->add(ti); // not pretty
+    this->objs->add(ti);
 
     // OK, we don't know what this type looks like so we'll give it an opaque pointer type
-    return MonoTypePtr(OpaquePtr::make(str::demangle(ti.name()), sz, inStruct));
+    // but strip the pointer char from the name, we assume opaqueptr types are always pointers
+    std::string tn = str::demangle(ti.name());
+    while (tn.size()>0 && tn.back()=='*') {
+      tn=tn.substr(0,tn.size()-1);
+    }
+    return MonoTypePtr(OpaquePtr::make(tn, sz, inStruct));
   }
 }
 
@@ -538,8 +547,8 @@ void cc::bindExternFunction(const std::string& fname, const MonoTypePtr& fty, vo
   this->jit.bindGlobal(fname, fty, fn);
 }
 
-bool cc::preludeLoaded() const {
-  return this->booted;
+void* cc::memalloc(size_t sz) {
+  return this->jit.memalloc(sz);
 }
 
 inline TEnvPtr allocTEnvFrame(const str::seq& names, const MonoTypes& tys, const TEnvPtr& ptenv) {
@@ -602,6 +611,15 @@ bool cc::requireMatchReachability() const { return this->checkMatchReachability;
 
 void cc::alwaysLowerPrimMatchTables(bool f) { this->lowerPrimMatchTables = f; }
 bool cc::alwaysLowerPrimMatchTables() const { return this->lowerPrimMatchTables; }
+
+void cc::buildColumnwiseMatches(bool f) { this->columnwiseMatches = f; }
+bool cc::buildColumnwiseMatches() const { return this->columnwiseMatches; }
+
+void cc::throwOnHugeRegexDFA(bool f) { this->shouldThrowOnHugeRegexDFA = f; }
+bool cc::throwOnHugeRegexDFA() const { return this-> shouldThrowOnHugeRegexDFA; }
+
+void cc::regexDFAOverNFAMaxRatio(int f) { this->dfaOverNfaMaxRatio = f; }
+int  cc::regexDFAOverNFAMaxRatio() const { return this->dfaOverNfaMaxRatio; }
 
 }
 

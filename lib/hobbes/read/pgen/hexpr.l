@@ -21,12 +21,12 @@ int yycolumn = 1;
 
 #define SAVE_STR    yylval.string = hobbes::autorelease(new std::string(yytext, yytext + yyleng))
 #define SAVE_IDENT  yylval.string = identifier(yytext, yytext + yyleng)
-#define SAVE_BOOL   yylval.boolv = std::string(yytext, yytext + yyleng) != "false"
-#define SAVE_SHORT  yylval.shortv = (short)atoi(yytext)
-#define SAVE_INT    yylval.intv = atoi(yytext)
-#define SAVE_LONG   yylval.longv = atol(std::string(yytext, yytext + yyleng - 1).c_str())
-#define SAVE_FLOAT  yylval.floatv = atof(std::string(yytext, yytext + yyleng).c_str())
-#define SAVE_DOUBLE yylval.doublev = atof(std::string(yytext, yytext + yyleng).c_str())
+#define SAVE_BOOL   std::istringstream(std::string(yytext, yytext + yyleng)) >> std::boolalpha >> yylval.boolv
+#define SAVE_SHORT  yylval.shortv = (short)std::stoi(std::string(yytext, yytext + yyleng))
+#define SAVE_INT    yylval.intv = std::stoi(std::string(yytext, yytext + yyleng))
+#define SAVE_LONG   yylval.longv = std::stol(std::string(yytext, yytext + yyleng - 1))
+#define SAVE_FLOAT  yylval.floatv = std::stof(std::string(yytext, yytext + yyleng))
+#define SAVE_DOUBLE yylval.doublev = std::stod(std::string(yytext, yytext + yyleng))
 
 std::string yyVexpLexError;
 int yyInitToken = 0;
@@ -146,7 +146,7 @@ std::string* identifier(const char* b, const char* e) {
 "@"                    { return TAT; }
 "$"                    { return TDOLLAR; }
 "?"                    { return TQUESTION; }
-'(\\.|.)'              { SAVE_STR;    return TCHAR; }
+'(\\.|[^'\n\\])+'      { SAVE_STR;    return (hobbes::str::unescape(hobbes::str::trimq(*yylval.string, '\'')).size() <= 1) ? TCHAR : TREGEX; }
 "'"                    { return TSQUOTE; }
 "`"                    { return TEQUOTE; }
 0X[0-9a-fA-F]{2}       { SAVE_STR;    return TBYTE; }
@@ -160,7 +160,6 @@ std::string* identifier(const char* b, const char* e) {
 [0-9]+S                { SAVE_SHORT;  return TSHORT; }
 [0-9]+                 { SAVE_INT;    return TINT; }
 \"(\\.|[^"])*\"        { SAVE_STR;    return TSTRING; }
-'([^']|\\')+'          { SAVE_STR;    return TREGEX; }
 
 [0-9]+ms               { SAVE_STR;    return TTIMEINTERVAL; }
 [0-9]+us               { SAVE_STR;    return TTIMEINTERVAL; }
@@ -183,6 +182,6 @@ std::string* identifier(const char* b, const char* e) {
 [0-9]{4}\-[0-9]{2}\-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3} { SAVE_STR; return TDATETIME; }
 [0-9]{4}\-[0-9]{2}\-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6} { SAVE_STR; return TDATETIME; }
 
-. { yyVexpLexError = "Unknown character: " + std::string(yytext); yyterminate(); }
+. { yyVexpLexError = "Unknown character: " + std::string(yytext); yyterminate(); if (false) { yy_flex_realloc(0, 0); yyunput(0, 0); } }
 
 %%

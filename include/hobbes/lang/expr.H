@@ -1045,23 +1045,23 @@ template <typename T>
   T switchOf(const PrimitivePtr& p, const switchConst<T>& f) {
     switch (p->case_id()) {
     case Unit::type_case_id:
-      return f.with((Unit*)(p.get()));
+      return f.with(crcast<Unit*>(p.get()));
     case Bool::type_case_id:
-      return f.with((Bool*)(p.get()));
+      return f.with(crcast<Bool*>(p.get()));
     case Char::type_case_id:
-      return f.with((Char*)(p.get()));
+      return f.with(crcast<Char*>(p.get()));
     case Byte::type_case_id:
-      return f.with((Byte*)(p.get()));
+      return f.with(crcast<Byte*>(p.get()));
     case Short::type_case_id:
-      return f.with((Short*)(p.get()));
+      return f.with(crcast<Short*>(p.get()));
     case Int::type_case_id:
-      return f.with((Int*)(p.get()));
+      return f.with(crcast<Int*>(p.get()));
     case Long::type_case_id:
-      return f.with((Long*)(p.get()));
+      return f.with(crcast<Long*>(p.get()));
     case Float::type_case_id:
-      return f.with((Float*)(p.get()));
+      return f.with(crcast<Float*>(p.get()));
     case Double::type_case_id:
-      return f.with((Double*)(p.get()));
+      return f.with(crcast<Double*>(p.get()));
     default:
       throw annotated_error(*p, "Internal error, cannot switch on unknown constant: " + show(p));
     }
@@ -1071,6 +1071,7 @@ template <typename T>
 //   (if the expression type is extended but functions on expressions aren't extended, it will be a compile-error)
 template <typename T>
   struct switchExpr {
+    virtual ~switchExpr() = default;
     virtual T with(const Unit* v)      const = 0;
     virtual T with(const Bool* v)      const = 0;
     virtual T with(const Char* v)      const = 0;
@@ -1100,6 +1101,7 @@ template <typename T>
 
 template <typename T>
   struct switchExprC : public switchExpr<T> {
+    virtual ~switchExprC() = default;
     virtual T withConst(const Expr* v)      const = 0;
     virtual T with     (const Var* v)       const = 0;
     virtual T with     (const Let* v)       const = 0;
@@ -1166,55 +1168,55 @@ template <typename T, typename F>
   T switchOfF(const Expr& e, F f) {
     switch (e.case_id()) {
     case Unit::type_case_id:
-      return f.with((Unit*)&e);
+      return f.with(crcast<Unit*>(&e));
     case Bool::type_case_id:
-      return f.with((Bool*)&e);
+      return f.with(crcast<Bool*>(&e));
     case Char::type_case_id:
-      return f.with((Char*)&e);
+      return f.with(crcast<Char*>(&e));
     case Byte::type_case_id:
-      return f.with((Byte*)&e);
+      return f.with(crcast<Byte*>(&e));
     case Short::type_case_id:
-      return f.with((Short*)&e);
+      return f.with(crcast<Short*>(&e));
     case Int::type_case_id:
-      return f.with((Int*)&e);
+      return f.with(crcast<Int*>(&e));
     case Long::type_case_id:
-      return f.with((Long*)&e);
+      return f.with(crcast<Long*>(&e));
     case Float::type_case_id:
-      return f.with((Float*)&e);
+      return f.with(crcast<Float*>(&e));
     case Double::type_case_id:
-      return f.with((Double*)&e);
+      return f.with(crcast<Double*>(&e));
     case Var::type_case_id:
-      return f.with((Var*)&e);
+      return f.with(crcast<Var*>(&e));
     case Let::type_case_id:
-      return f.with((Let*)&e);
+      return f.with(crcast<Let*>(&e));
     case LetRec::type_case_id:
-      return f.with((LetRec*)&e);
+      return f.with(crcast<LetRec*>(&e));
     case Fn::type_case_id:
-      return f.with((Fn*)&e);
+      return f.with(crcast<Fn*>(&e));
     case App::type_case_id:
-      return f.with((App*)&e);
+      return f.with(crcast<App*>(&e));
     case Assign::type_case_id:
-      return f.with((Assign*)&e);
+      return f.with(crcast<Assign*>(&e));
     case MkArray::type_case_id:
-      return f.with((MkArray*)&e);
+      return f.with(crcast<MkArray*>(&e));
     case MkVariant::type_case_id:
-      return f.with((MkVariant*)&e);
+      return f.with(crcast<MkVariant*>(&e));
     case MkRecord::type_case_id:
-      return f.with((MkRecord*)&e);
+      return f.with(crcast<MkRecord*>(&e));
     case AIndex::type_case_id:
-      return f.with((AIndex*)&e);
+      return f.with(crcast<AIndex*>(&e));
     case Case::type_case_id:
-      return f.with((Case*)&e);
+      return f.with(crcast<Case*>(&e));
     case Switch::type_case_id:
-      return f.with((Switch*)&e);
+      return f.with(crcast<Switch*>(&e));
     case Proj::type_case_id:
-      return f.with((Proj*)&e);
+      return f.with(crcast<Proj*>(&e));
     case Assump::type_case_id:
-      return f.with((Assump*)&e);
+      return f.with(crcast<Assump*>(&e));
     case Pack::type_case_id:
-      return f.with((Pack*)&e);
+      return f.with(crcast<Pack*>(&e));
     case Unpack::type_case_id:
-      return f.with((Unpack*)&e);
+      return f.with(crcast<Unpack*>(&e));
     default:
       throw annotated_error(e, "Internal error, cannot switch on unknown expression: " + show(e));
     }
@@ -1238,8 +1240,8 @@ template <typename T>
 template <typename T>
   std::vector<T> switchOf(const Exprs& es, const switchExpr<T>& f) {
     std::vector<T> result;
-    for (Exprs::const_iterator e = es.begin(); e != es.end(); ++e) {
-      result.push_back(switchOf(*e, f));
+    for (auto e : es) {
+      result.push_back(switchOf(e, f));
     }
     return result;
   }
@@ -1247,8 +1249,8 @@ template <typename T>
 template <typename T>
   std::vector<T> switchOf(const Exprs& es, const switchExprM<T>& f) {
     std::vector<T> result;
-    for (Exprs::const_iterator e = es.begin(); e != es.end(); ++e) {
-      result.push_back(switchOf(*e, const_cast<switchExprM<T>&>(f)));
+    for (auto e : es) {
+      result.push_back(switchOf(e, const_cast<switchExprM<T>&>(f)));
     }
     return result;
   }
@@ -1258,8 +1260,8 @@ template <typename K, typename T>
     typedef std::pair<K, T> KT;
     typedef std::vector<KT> KTS;
     KTS kts;
-    for (typename std::vector< std::pair<K, ExprPtr> >::const_iterator ke = kes.begin(); ke != kes.end(); ++ke) {
-      kts.push_back(KT(ke->first, switchOf(ke->second, f)));
+    for (auto ke : kes) {
+      kts.push_back(KT(ke.first, switchOf(ke.second, f)));
     }
     return kts;
   }
@@ -1269,8 +1271,8 @@ template <typename K, typename T>
     typedef std::pair<K, T> KT;
     typedef std::vector<KT> KTS;
     KTS kts;
-    for (typename std::vector< std::pair<K, ExprPtr> >::const_iterator ke = kes.begin(); ke != kes.end(); ++ke) {
-      kts.push_back(KT(ke->first, switchOf(ke->second, const_cast<switchExprM<T>&>(f))));
+    for (auto ke : kes) {
+      kts.push_back(KT(ke.first, switchOf(ke.second, const_cast<switchExprM<T>&>(f))));
     }
     return kts;
   }
@@ -1279,6 +1281,7 @@ template <typename K, typename T>
 //   as a function or an in-place mutation
 //
 struct switchExprTyFn : public switchExprC<ExprPtr> {
+  virtual ~switchExprTyFn() = default;
   // whatever type transform is being done (default is the identity transform)
   virtual QualTypePtr withTy(const QualTypePtr& qt) const;
 
@@ -1342,8 +1345,8 @@ Case::Bindings switchOf(const Case::Bindings& bs, const switchExpr<ExprPtr>& f);
 Switch::Bindings switchOf(const Switch::Bindings& bs, const switchExpr<ExprPtr>& f);
 
 // require that a mono-type can be extracted from an expression
-const MonoTypePtr& requireMonotype(const ExprPtr&);
-MonoTypes requireMonotype(const Exprs&);
+const MonoTypePtr& requireMonotype(const TEnvPtr&, const ExprPtr&);
+MonoTypes requireMonotype(const TEnvPtr&, const Exprs&);
 
 // add explicit type assumption terms where we have annotations
 ExprPtr liftTypesAsAssumptions(const ExprPtr& e);
