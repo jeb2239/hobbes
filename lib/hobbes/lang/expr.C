@@ -48,7 +48,7 @@ Unit::Unit(const LexicalAnnotation& la) : Base(la) { }
 Expr* Unit::clone() const { return new Unit(la()); }
 void Unit::show(std::ostream& out) const          { out << "()"; }
 void Unit::showAnnotated(std::ostream& out) const { show(out); showTy(out, type()); }
-bool Unit::equiv(const Unit& rhs)           const { return true; }
+bool Unit::equiv(const Unit&)               const { return true; }
 bool Unit::lt(const Unit&)                  const { return false; }
 MonoTypePtr Unit::primType() const { return MonoTypePtr(Prim::make("unit")); }
 
@@ -111,6 +111,16 @@ void Long::showAnnotated(std::ostream& out) const { show(out); showTy(out, type(
 bool Long::equiv(const Long& rhs)           const { return this->x == rhs.x; }
 bool Long::lt(const Long& rhs)              const { return this->x < rhs.x; }
 MonoTypePtr Long::primType() const { return MonoTypePtr(Prim::make("long")); }
+
+Int128::Int128(int128_t x, const LexicalAnnotation& la) : Base(la), x(x) { }
+int128_t Int128::value() const { return this->x; }
+void Int128::value(int128_t nx) { this->x = nx; }
+Expr* Int128::clone() const { return new Int128(this->x,la()); }
+void Int128::show(std::ostream& out)          const { printInt128(out, this->x); out << "H"; }
+void Int128::showAnnotated(std::ostream& out) const { show(out); showTy(out, type()); }
+bool Int128::equiv(const Int128& rhs)         const { return this->x == rhs.x; }
+bool Int128::lt(const Int128& rhs)            const { return this->x < rhs.x; }
+MonoTypePtr Int128::primType() const { return MonoTypePtr(Prim::make("int128")); }
 
 Float::Float(float x, const LexicalAnnotation& la) : Base(la), x(x) { }
 float Float::value() const { return this->x; }
@@ -1107,6 +1117,7 @@ UnitV switchExprTyFnM::with(Byte* v) { return updateTy(v); }
 UnitV switchExprTyFnM::with(Short* v) { return updateTy(v); }
 UnitV switchExprTyFnM::with(Int* v) { return updateTy(v); }
 UnitV switchExprTyFnM::with(Long* v) { return updateTy(v); }
+UnitV switchExprTyFnM::with(Int128* v) { return updateTy(v); }
 UnitV switchExprTyFnM::with(Float* v) { return updateTy(v); }
 UnitV switchExprTyFnM::with(Double* v) { return updateTy(v); }
 UnitV switchExprTyFnM::with(Var* v) { return updateTy(v); }
@@ -1219,6 +1230,11 @@ struct liftTypeAsAssumpF : public switchExprTyFn {
   }
 };
 
+
+unsolved_constraints::unsolved_constraints(const LexicalAnnotation&  la, const std::string& msg, const Constraints& cs) : annotated_error(la, msg), cs(cs) { }
+unsolved_constraints::unsolved_constraints(const LexicallyAnnotated& la, const std::string& msg, const Constraints& cs) : annotated_error(la, msg), cs(cs) { }
+const Constraints& unsolved_constraints::constraints() const { return this->cs; }
+
 const MonoTypePtr& requireMonotype(const TEnvPtr& tenv, const ExprPtr& e) {
   if (e->type() == QualTypePtr()) {
     throw annotated_error(*e, "Expression '" + show(e) + "' not explicitly annotated.  Internal compiler error.");
@@ -1227,11 +1243,8 @@ const MonoTypePtr& requireMonotype(const TEnvPtr& tenv, const ExprPtr& e) {
   if (e->type()->constraints().size() > 0) {
     Constraints cs = expandHiddenTCs(tenv, simplifyVarNames(e->type())->constraints());
     std::ostringstream ss;
-    ss << "Failed to compile expression due to unresolved type constraint" << (cs.size() > 1 ? "s" : "") << ":";
-    for (const auto& c : cs) {
-      ss << "\n  " << show(c);
-    }
-    throw annotated_error(*e, ss.str());
+    ss << "Failed to compile expression due to unresolved type constraint" << (cs.size() > 1 ? "s" : "");
+    throw unsolved_constraints(*e, ss.str(), cs);
   }
   
   return e->type()->monoType();
@@ -1269,7 +1282,7 @@ const ExprPtr& stripAssumpHead(const ExprPtr& e) {
 
 // find the set of free variables in an expression
 struct freeVarF : public switchExprC<VarSet> {
-  VarSet withConst(const Expr* v)      const { return VarSet(); }
+  VarSet withConst(const Expr*)        const { return VarSet(); }
   VarSet with     (const Var* v)       const { return toSet(list(v->value())); }
   VarSet with     (const Let* v)       const { return setUnion(list(freeVars(v->varExpr()), setDifference(freeVars(v->bodyExpr()), toSet(list(v->var()))))); }
   VarSet with     (const Fn* v)        const { return setDifference(freeVars(v->body()), toSet(v->varNames())); }
@@ -1335,7 +1348,7 @@ struct etvarNamesF : public switchExprC<UnitV> {
   etvarNamesF(NameSet* out) : out(out) { }
   UnitV an(const Expr* v) const { if (v->type()) { tvarNames(v->type(), this->out); } return unitv; }
 
-  UnitV withConst(const Expr* v)      const { return unitv; }
+  UnitV withConst(const Expr*)        const { return unitv; }
   UnitV with     (const Var* v)       const { return an(v); }
   UnitV with     (const Let* v)       const { switchOf(v->varExpr(), *this); switchOf(v->bodyExpr(), *this); return an(v); }
   UnitV with     (const Fn* v)        const { switchOf(v->body(), *this); return an(v); }
@@ -1496,7 +1509,7 @@ struct encodeExprF : public switchExpr<UnitV> {
   std::ostream& out;
   encodeExprF(std::ostream& out) : out(out) { }
 
-  UnitV with(const Unit* v) const {
+  UnitV with(const Unit*) const {
     encode(Unit::type_case_id, this->out);
     return unitv;
   }
@@ -1533,6 +1546,12 @@ struct encodeExprF : public switchExpr<UnitV> {
 
   UnitV with(const Long* v) const {
     encode(Long::type_case_id, this->out);
+    encode(v->value(), this->out);
+    return unitv;
+  }
+
+  UnitV with(const Int128* v) const {
+    encode(Int128::type_case_id, this->out);
     encode(v->value(), this->out);
     return unitv;
   }
@@ -1740,6 +1759,12 @@ void decode(ExprPtr* out, std::istream& in) {
     long x = 0;
     decode(&x, in);
     result = ExprPtr(new Long(x, LexicalAnnotation::null()));
+    break;
+  }
+  case Int128::type_case_id: {
+    int128_t x = 0;
+    decode(&x, in);
+    result = ExprPtr(new Int128(x, LexicalAnnotation::null()));
     break;
   }
   case Double::type_case_id: {

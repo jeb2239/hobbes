@@ -104,7 +104,12 @@ struct appTyDefnF : public switchTyFn {
   }
 };
 MonoTypePtr applyTypeDefns(cc* e, const MonoTypePtr& t) {
-  return switchOf(t, appTyDefnF(e));
+  auto ua = e->unappTyDefns.find(t.get());
+  if (ua != e->unappTyDefns.end()) return ua->second;
+
+  MonoTypePtr r = switchOf(t, appTyDefnF(e));
+  e->unappTyDefns[t.get()] = r;
+  return r;
 }
 
 MonoTypes applyTypeDefns(cc* e, const MonoTypes& ts) {

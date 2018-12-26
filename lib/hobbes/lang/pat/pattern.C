@@ -458,7 +458,7 @@ struct inferTypeF : public switchPattern<MonoTypePtr> {
     return v->equivConstant()->primType();
   }
 
-  MonoTypePtr with(const MatchAny* v) const {
+  MonoTypePtr with(const MatchAny*) const {
     return freshTypeVar();
   }
 
@@ -487,7 +487,7 @@ struct inferTypeF : public switchPattern<MonoTypePtr> {
     return MonoTypePtr(Record::make(ms));
   }
 
-  MonoTypePtr with(const MatchVariant* v) const {
+  MonoTypePtr with(const MatchVariant*) const {
     // too broad, but for this purpose should be fine
     return freshTypeVar();
   }
@@ -563,7 +563,7 @@ struct inferMappingF : public switchPattern<UnitV> {
     return unitv;
   }
 
-  UnitV with(const MatchRegex* x) const {
+  UnitV with(const MatchRegex*) const {
     // regex translation will decide how to conflate binding names
     return unitv;
   }
@@ -637,6 +637,21 @@ ExprPtr compileMatchTest(cc* c, const ExprPtr& e, const PatternPtr& p, const Lex
     return ExprPtr(new Bool(true, rootLA));
   } else {
     return compileMatch(c, list(e), list(PatternRow(list(p), ExprPtr(new Bool(true, rootLA))), PatternRow(list(PatternPtr(new MatchAny("_", rootLA))), ExprPtr(new Bool(false, rootLA)))), rootLA);
+  }
+}
+
+ExprPtr compileRegexFn(cc* c, const std::string& regex, const LexicalAnnotation& rootLA) {
+  PatternPtr p(new MatchRegex(regex, rootLA));
+
+  auto ns = accessibleBindingNames(p);
+  if (ns.size() == 0) {
+    return fn("x", compileMatchTest(c, var("x", rootLA), p, rootLA), rootLA);
+  } else {
+    MkRecord::FieldDefs fs;
+    for (auto n : ns) {
+      fs.push_back(MkRecord::FieldDef(n, var(n, rootLA)));
+    }
+    return fn("x", compileMatch(c, list(var("x", rootLA)), list(PatternRow(list(p), fncall(var("just", rootLA), mkrecord(fs, rootLA), rootLA)), PatternRow(list(PatternPtr(new MatchAny("_", rootLA))), var("nothing", rootLA))), rootLA), rootLA);
   }
 }
 

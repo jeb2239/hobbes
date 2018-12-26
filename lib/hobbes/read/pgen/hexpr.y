@@ -316,6 +316,7 @@ extern PatVarCtorFn patVarCtorFn;
   short                                   shortv;
   int                                     intv;
   long                                    longv;
+  __int128                                int128v;
   float                                   floatv;
   double                                  doublev;
 
@@ -348,6 +349,7 @@ extern PatVarCtorFn patVarCtorFn;
 %token <shortv>  TSHORT        "shortV"
 %token <intv>    TINT          "intV"
 %token <longv>   TLONG         "longV"
+%token <int128v> TINT128       "int128V"
 %token <floatv>  TFLOAT        "floatV"
 %token <doublev> TDOUBLE       "doubleV"
 %token <string>  TIDENT        "id"
@@ -411,6 +413,7 @@ extern PatVarCtorFn patVarCtorFn;
 %token TCOMMA     ","
 %token TSEMICOLON ";"
 %token TFN        "\\"
+%token TFNL       "fn"
 %token TCOMPOSE   "o"
 %token TUPTO      ".."
 %token TCARET     "^"
@@ -603,6 +606,7 @@ types: l0mtype       { $$ = autorelease(new MonoTypes()); $$->push_back(*$1); }
 
 /* expressions */
 l0expr: "\\" patterns "." l0expr { $$ = makePatternFn(*$2, ExprPtr($4), m(@1, @4)); }
+      | "fn" patterns "." l0expr { $$ = makePatternFn(*$2, ExprPtr($4), m(@1, @4)); }
       | "!" l1expr               { $$ = TAPP1(var("not",m(@1)), $2, m(@1,@2)); }
       | l0expr "and" l0expr      { $$ = TAPP2(var("and",m(@2)), $1, $3, m(@1,@3)); }
       | l0expr "or"  l0expr      { $$ = TAPP2(var("or",m(@2)),  $1, $3, m(@1,@3)); }
@@ -707,6 +711,9 @@ l6expr: l6expr "(" cargs ")"    { $$ = new App(ExprPtr($1), *$3, m(@1, @4)); }
       /* record sections */
       | recfieldpath { $$ = new Fn(str::strings("x"), proj(var("x", m(@1)), *$1, m(@1)), m(@1)); }
 
+      /* regex functions */
+      | "regexV" { $$ = compileRegexFn(yyParseCC, std::string($1->begin() + 1, $1->end() - 1), m(@1))->clone(); }
+
       /* existential construction / elimination */
       | "pack" l6expr                      { $$ = new Pack(ExprPtr($2), m(@1, @2)); }
       | "unpack" id "=" l6expr "in" l6expr { $$ = new Unpack(*$2, ExprPtr($4), ExprPtr($6), m(@1, @6)); }
@@ -719,6 +726,7 @@ l6expr: l6expr "(" cargs ")"    { $$ = new App(ExprPtr($1), *$3, m(@1, @4)); }
       | "shortV"    { $$ = new Short($1, m(@1)); }
       | "intV"      { $$ = new Int($1, m(@1)); }
       | "longV"     { $$ = new Long($1, m(@1)); }
+      | "int128V"   { $$ = new Int128($1, m(@1)); }
       | "floatV"    { $$ = new Float($1, m(@1)); }
       | "doubleV"   { $$ = new Double($1, m(@1)); }
       | "stringV"   { $$ = mkarray(str::unescape(str::trimq(*$1)), m(@1)); }
@@ -794,6 +802,7 @@ refutablep: "boolV"                    { $$ = new MatchLiteral(PrimitivePtr(new 
           | "shortV"                   { $$ = new MatchLiteral(PrimitivePtr(new Short($1, m(@1))), m(@1)); }
           | "intV"                     { $$ = new MatchLiteral(PrimitivePtr(new Int($1, m(@1))), m(@1)); }
           | "longV"                    { $$ = new MatchLiteral(PrimitivePtr(new Long($1, m(@1))), m(@1)); }
+          | "int128V"                  { $$ = new MatchLiteral(PrimitivePtr(new Int128($1, m(@1))), m(@1)); }
           | "doubleV"                  { $$ = new MatchLiteral(PrimitivePtr(new Double($1, m(@1))), m(@1)); }
           | "bytesV"                   { $$ = mkpatarray(str::dehexs(*$1), m(@1)); }
           | "stringV"                  { $$ = mkpatarray(str::unescape(str::trimq(*$1)), m(@1)); }
@@ -847,6 +856,7 @@ recfieldname: id         { $$ = $1; }
             | "parse"    { $$ = autorelease(new std::string("parse")); }
             | "do"       { $$ = autorelease(new std::string("do")); }
             | "return"   { $$ = autorelease(new std::string("return")); }
+            | "fn"       { $$ = autorelease(new std::string("fn")); }
             | "intV"     { $$ = autorelease(new std::string(".f" + str::from($1))); }
 
 recfieldpath: recfieldpath "." recfieldname { $$ = $1; $$->push_back(*$3); }
@@ -922,8 +932,8 @@ l1mtype: id                                { $$ = autorelease(new MonoTypePtr(mo
        | "intV"                            { $$ = autorelease(new MonoTypePtr(($1 == 0) ? Prim::make("void") : TLong::make($1))); }
        | "boolV"                           { $$ = autorelease(new MonoTypePtr($1 ? TLong::make(1) : TLong::make(0))); }
        | "exists" id "." l1mtype           { $$ = autorelease(new MonoTypePtr(Exists::make(*$2, *$4))); }
-       | l1mtype "@" l1mtype               { $$ = autorelease(new MonoTypePtr(TApp::make(Prim::make("fileref"), list(*$1, *$3)))); }
-       | l1mtype "@" "?"                   { $$ = autorelease(new MonoTypePtr(TApp::make(Prim::make("fileref"), list(*$1)))); }
+       | l1mtype "@" l1mtype               { $$ = autorelease(new MonoTypePtr(fileRefTy(*$1, *$3))); }
+       | l1mtype "@" "?"                   { $$ = autorelease(new MonoTypePtr(fileRefTy(*$1))); }
        | "^" id "." l1mtype                { $$ = autorelease(new MonoTypePtr(Recursive::make(*$2, *$4))); }
        | "stringV"                         { $$ = autorelease(new MonoTypePtr(TString::make(str::unescape(str::trimq(*$1))))); }
        | "`" l0expr "`"                    { $$ = autorelease(new MonoTypePtr(TApp::make(primty("quote"), list(texpr(ExprPtr($2)))))); }

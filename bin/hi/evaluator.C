@@ -259,7 +259,18 @@ void evaluator::resetREPLCycle() {
   hobbes::resetMemoryPool();
 }
 
-void showSearchResults(const std::string& expr, const hobbes::SearchEntries& ses) {
+bool evaluator::satisfied(const hobbes::ConstraintPtr& c) {
+  hobbes::Definitions ds;
+  bool result = false;
+  try {
+    result = hobbes::satisfied(this->ctx.typeEnv(), c, &ds);
+  } catch (std::exception&) {
+  }
+  this->ctx.drainUnqualifyDefs(ds);
+  return result;
+}
+
+void showSearchResults(const std::string&, const hobbes::SearchEntries& ses) {
   if (ses.size() > 0) {
     std::map<std::string, std::string> stbl;
     for (const auto& se : ses) {

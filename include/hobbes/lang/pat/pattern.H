@@ -46,9 +46,13 @@ ExprPtr compileMatch(cc*, const Exprs&, const PatternRows&, const LexicalAnnotat
 // produce an expression to test whether an expression matches a single pattern
 ExprPtr compileMatchTest(cc*, const ExprPtr&, const PatternPtr&, const LexicalAnnotation&);
 
+// produce an expression to test whether (and/or how) a regex matches a string
+ExprPtr compileRegexFn(cc*, const std::string& regex, const LexicalAnnotation&);
+
 // a general representation of patterns to match
 class Pattern : public LexicallyAnnotated {
 public:
+  virtual ~Pattern() = default;
   virtual void show(std::ostream&) const = 0;
   virtual bool operator==(const Pattern&) const = 0;
 
