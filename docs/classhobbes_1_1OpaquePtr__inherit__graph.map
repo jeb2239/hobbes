@@ -1,5 +1,0 @@
-<map id="hobbes::OpaquePtr" name="hobbes::OpaquePtr">
-<area shape="rect" id="node2" href="$classhobbes_1_1MonoTypeCase.html" title="{hobbes::MonoTypeCase\l\&lt; OpaquePtr \&gt;\n||+ MonoTypeCase()\l}" alt="" coords="5,433,169,525"/>
-<area shape="rect" id="node3" href="$classhobbes_1_1MonoType.html" title="{hobbes::MonoType\n|+ freeTVars\l+ tgenCount\l+ memorySize\l+ unaliasedType\l&#45; cid\l|+ ~MonoType()\l+ show()\l+ operator==()\l+ case_id()\l+ makeType()\l# MonoType()\l# makeType()\l}" alt="" coords="37,5,170,229"/>
-<area shape="rect" id="node4" href="$classhobbes_1_1MonoTypeCase.html" title="{hobbes::MonoTypeCase\l\&lt; Case \&gt;\n||+ MonoTypeCase()\l}" alt="" coords="104,279,268,371"/>
-</map>

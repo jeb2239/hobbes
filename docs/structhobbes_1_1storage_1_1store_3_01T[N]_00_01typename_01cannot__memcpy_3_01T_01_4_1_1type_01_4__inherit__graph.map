@@ -1,4 +1,0 @@
-<map id="hobbes::storage::store&lt; T[N], typename cannot_memcpy&lt; T &gt;::type &gt;" name="hobbes::storage::store&lt; T[N], typename cannot_memcpy&lt; T &gt;::type &gt;">
-<area shape="rect" id="node2" href="$structhobbes_1_1storage_1_1fixedArrTyDesc.html" title="{hobbes::storage::fixedArr\lTyDesc\&lt; T, N \&gt;\n||+ encode()\l+ describe()\l}" alt="" coords="5,5,173,112"/>
-<area shape="rect" id="node3" href="$structhobbes_1_1storage_1_1fixedArrIterWrite.html" title="{hobbes::storage::fixedArr\lIterWrite\&lt; T, N \&gt;\n||+ size()\l+ write()\l}" alt="" coords="197,5,365,112"/>
-</map>

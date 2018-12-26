@@ -1,6 +1,0 @@
-<map id="hobbes::cc" name="hobbes::cc">
-<area shape="rect" id="node2" href="$structhobbes_1_1typedb.html" title="{hobbes::typedb\n||+ defineNamedType()\l+ isTypeName()\l+ namedTypeRepresentation()\l+ defineTypeAlias()\l+ isTypeAliasName()\l+ replaceTypeAliases()\l+ opaquePtrPolyType()\l+ opaquePtrMonoType()\l+ generalize()\l}" alt="" coords="5,792,204,987"/>
-<area shape="rect" id="node9" href="$classhobbes_1_1jitcc.html" title="{hobbes::jitcc\n||+ jitcc()\l+ ~jitcc()\l+ builder()\l+ module()\l+ getSymbolAddress()\l+ dump()\l+ defineGlobal()\l+ bindGlobal()\l+ isDefined()\l+ compile()\land 21 more...\l&#45; getMachineCode()\l&#45; unsafeCompileFunctions()\l&#45; pushGlobalRegion()\l&#45; popGlobalRegion()\l&#45; loadConstant()\l&#45; maybeRefGlobal()\l&#45; refGlobal()\l&#45; maybeRefGlobalV()\l}" alt="" coords="1455,719,1637,1060"/>
-<area shape="rect" id="node17" href="$classhobbes_1_1region.html" title="{hobbes::region\n||+ region()\l+ ~region()\l+ malloc()\l+ clear()\l+ reset()\l+ allocated()\l+ used()\l+ wasted()\l+ show()\l+ abortAtMemCeiling()\l&#45; newpage()\l&#45; allocpage()\l&#45; freepage()\l&#45; freepages()\l}" alt="" coords="1077,315,1231,583"/>
-<area shape="rect" id="node18" href="$structhobbes_1_1mempage.html" title="{hobbes::mempage\n||}" alt="" coords="1225,160,1355,237"/>
-</map>

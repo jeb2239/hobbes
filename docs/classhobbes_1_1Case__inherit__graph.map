@@ -1,5 +1,0 @@
-<map id="hobbes::Case" name="hobbes::Case">
-<area shape="rect" id="node2" href="$classhobbes_1_1ExprCase.html" title="{hobbes::ExprCase\&lt; Case \&gt;\n||+ ExprCase()\l+ operator==()\l+ operator==()\l}" alt="" coords="5,520,191,627"/>
-<area shape="rect" id="node3" href="$classhobbes_1_1Expr.html" title="{hobbes::Expr\n|&#45; annotatedType\l&#45; cid\l|+ ~Expr()\l+ show()\l+ showAnnotated()\l+ clone()\l+ operator==()\l+ type()\l+ type()\l+ case_id()\l# Expr()\l}" alt="" coords="32,263,164,472"/>
-<area shape="rect" id="node4" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n|&#45; lannotation\l|+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="7,5,189,215"/>
-</map>

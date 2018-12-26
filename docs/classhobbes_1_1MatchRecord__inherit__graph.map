@@ -1,6 +1,0 @@
-<map id="hobbes::MatchRecord" name="hobbes::MatchRecord">
-<area shape="rect" id="node2" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; MatchRecord \&gt;\n||+ PatternCase()\l}" alt="" coords="47,648,192,740"/>
-<area shape="rect" id="node3" href="$classhobbes_1_1Pattern.html" title="{hobbes::Pattern\n|&#45; pname\l&#45; cid\l|+ show()\l+ operator==()\l+ name()\l+ name()\l+ case_id()\l# assignSubNames()\l# Pattern()\l}" alt="" coords="25,264,169,444"/>
-<area shape="rect" id="node5" href="$classhobbes_1_1PatternCase.html" title="{hobbes::PatternCase\l\&lt; Case \&gt;\n||+ PatternCase()\l}" alt="" coords="119,493,264,585"/>
-<area shape="rect" id="node4" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n|&#45; lannotation\l|+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="5,5,188,215"/>
-</map>

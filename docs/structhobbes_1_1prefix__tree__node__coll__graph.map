@@ -1,6 +1,0 @@
-<map id="hobbes::prefix_tree_node&lt; K, V, KMap &gt;" name="hobbes::prefix_tree_node&lt; K, V, KMap &gt;">
-<area shape="rect" id="node2" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; unit, V \&gt;\n||+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="187,712,361,892"/>
-<area shape="rect" id="node9" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; Ctors \&gt;\n||+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="191,469,357,649"/>
-<area shape="rect" id="node6" href="$structhobbes_1_1maximum.html" title="{hobbes::maximum\&lt; hobbes\l::TAlignOfF, Ctors... \&gt;\n||}" alt="" coords="245,315,428,407"/>
-<area shape="rect" id="node8" href="$structhobbes_1_1maximum.html" title="{hobbes::maximum\&lt; SzP,\l T0, Ts \&gt;\n||}" alt="" coords="383,145,554,237"/>
-</map>

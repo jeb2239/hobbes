@@ -1,8 +1,0 @@
-<map id="include/hobbes/lang/expr.H" name="include/hobbes/lang/expr.H">
-<area shape="rect" id="node2" href="$type_8H.html" title="hobbes/lang/type.H" alt="" coords="603,95,737,121"/>
-<area shape="rect" id="node9" href="$ptr_8H.html" title="hobbes/util/ptr.H" alt="" coords="1075,244,1193,271"/>
-<area shape="rect" id="node14" href="$array_8H.html" title="hobbes/util/array.H" alt="" coords="220,319,352,345"/>
-<area shape="rect" id="node24" href="$lannotation_8H.html" title="hobbes/util/lannotation.H" alt="" coords="673,169,840,196"/>
-<area shape="rect" id="node3" href="$hash_8H.html" title="hobbes/util/hash.H" alt="" coords="966,319,1097,345"/>
-<area shape="rect" id="node20" href="$util_2str_8H.html" title="hobbes/util/str.H" alt="" coords="461,244,580,271"/>
-</map>

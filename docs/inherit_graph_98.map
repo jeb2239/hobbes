@@ -1,9 +1,0 @@
-<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$structhobbes_1_1liftFixedArray.html" title="hobbes::liftFixedArray\l\&lt; T, N \&gt;" alt="" coords="5,169,155,211"/>
-<area shape="rect" id="node2" href="$structhobbes_1_1lift_3_01const_01T_07_6_08[N]_00_01InStruct_01_4.html" title="hobbes::lift\&lt; const\l T(&amp;)[N], InStruct \&gt;" alt="" coords="203,5,337,47"/>
-<area shape="rect" id="node3" href="$structhobbes_1_1lift_3_01const_01T_07_5_08[N]_00_01InStruct_01_4.html" title="hobbes::lift\&lt; const\l T(*)[N], InStruct \&gt;" alt="" coords="205,71,335,112"/>
-<area shape="rect" id="node4" href="$structhobbes_1_1lift_3_01const_01T[N]_00_01InStruct_01_4.html" title="hobbes::lift\&lt; const\l T[N], InStruct \&gt;" alt="" coords="205,136,335,177"/>
-<area shape="rect" id="node5" href="$structhobbes_1_1lift_3_01T_07_6_08[N]_00_01InStruct_01_4.html" title="hobbes::lift\&lt; T(&amp;)\l[N], InStruct \&gt;" alt="" coords="209,201,331,243"/>
-<area shape="rect" id="node6" href="$structhobbes_1_1lift_3_01T_07_5_08[N]_00_01InStruct_01_4.html" title="hobbes::lift\&lt; T(*)\l[N], InStruct \&gt;" alt="" coords="211,267,329,308"/>
-<area shape="rect" id="node7" href="$structhobbes_1_1lift_3_01T[N]_00_01InStruct_01_4.html" title="hobbes::lift\&lt; T[N],\l InStruct \&gt;" alt="" coords="206,332,334,373"/>
-</map>

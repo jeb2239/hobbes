@@ -1,5 +1,0 @@
-<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$structhobbes_1_1liftStruct.html" title="hobbes::liftStruct\&lt; T \&gt;" alt="" coords="5,60,159,87"/>
-<area shape="rect" id="node2" href="$structhobbes_1_1lift_3_01T_01_5_00_01false_00_01typename_01T_1_1is__hobbes__struct_01_4.html" title="hobbes::lift\&lt; T *,\l false, typename T::\lis_hobbes_struct \&gt;" alt="" coords="219,5,357,61"/>
-<area shape="rect" id="node3" href="$structhobbes_1_1lift_3_01T_00_01true_00_01typename_01T_1_1is__hobbes__struct_01_4.html" title="hobbes::lift\&lt; T, true,\l typename T::is_hobbes\l_struct \&gt;" alt="" coords="207,85,369,141"/>
-</map>

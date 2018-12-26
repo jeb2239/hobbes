@@ -1,6 +1,0 @@
-<map id="include/hobbes/parse/grammar.H" name="include/hobbes/parse/grammar.H">
-<area shape="rect" id="node2" href="$grammar_8C.html" title="lib/hobbes/parse/grammar.C" alt="" coords="5,102,192,129"/>
-<area shape="rect" id="node3" href="$read_2parser_8C.html" title="lib/hobbes/read/parser.C" alt="" coords="217,102,381,129"/>
-<area shape="rect" id="node4" href="$hexpr_8lex_8C.html" title="lib/hobbes/read/pgen\l/hexpr.lex.C" alt="" coords="405,95,547,136"/>
-<area shape="rect" id="node5" href="$hexpr_8parse_8C.html" title="lib/hobbes/read/pgen\l/hexpr.parse.C" alt="" coords="571,95,714,136"/>
-</map>

@@ -1,6 +1,0 @@
-<map id="include/hobbes/lang/pat/print.H" name="include/hobbes/lang/pat/print.H">
-<area shape="rect" id="node2" href="$dfa_8C.html" title="lib/hobbes/lang/pat\l/dfa.C" alt="" coords="5,95,136,136"/>
-<area shape="rect" id="node3" href="$pattern_8C.html" title="lib/hobbes/lang/pat\l/pattern.C" alt="" coords="160,95,291,136"/>
-<area shape="rect" id="node4" href="$print_8C.html" title="lib/hobbes/lang/pat\l/print.C" alt="" coords="315,95,445,136"/>
-<area shape="rect" id="node5" href="$parse_2parser_8C.html" title="lib/hobbes/parse/parser.C" alt="" coords="469,102,640,129"/>
-</map>

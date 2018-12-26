@@ -1,4 +1,0 @@
-<map id="hobbes::GSymRef" name="hobbes::GSymRef">
-<area shape="rect" id="node2" href="$classhobbes_1_1GrammarValue.html" title="{hobbes::GrammarValue\n||+ GrammarValue()\l+ show()\l&#45; GrammarValue()\l}" alt="" coords="17,263,176,369"/>
-<area shape="rect" id="node3" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n|&#45; lannotation\l|+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="5,5,188,215"/>
-</map>

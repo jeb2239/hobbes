@@ -1,4 +1,0 @@
-<map id="hobbes::liftEnum&lt; T &gt;" name="hobbes::liftEnum&lt; T &gt;">
-<area shape="rect" id="node2" href="$structhobbes_1_1lift_3_01T_01_5_00_01false_00_01typename_01T_1_1is__hobbes__enum_01_4.html" title="{hobbes::lift\&lt; T *,\l false, typename T::\lis_hobbes_enum \&gt;\n||}" alt="" coords="5,131,144,237"/>
-<area shape="rect" id="node3" href="$structhobbes_1_1lift_3_01T_00_01true_00_01typename_01T_1_1is__hobbes__enum_01_4.html" title="{hobbes::lift\&lt; T, true,\l typename T::is_hobbes\l_enum \&gt;\n||}" alt="" coords="168,131,331,237"/>
-</map>

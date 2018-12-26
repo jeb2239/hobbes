@@ -1,7 +1,0 @@
-<map id="hobbes::Char" name="hobbes::Char">
-<area shape="rect" id="node2" href="$classhobbes_1_1PrimitiveCase.html" title="{hobbes::PrimitiveCase\l\&lt; Char \&gt;\n||+ PrimitiveCase()\l+ equiv()\l+ lt()\l+ operator\&lt;()\l+ operator==()\l}" alt="" coords="42,907,197,1057"/>
-<area shape="rect" id="node3" href="$classhobbes_1_1Primitive.html" title="{hobbes::Primitive\n||+ operator==()\l+ operator\&lt;()\l+ primType()\l+ Primitive()\l}" alt="" coords="35,523,158,644"/>
-<area shape="rect" id="node6" href="$classhobbes_1_1PrimitiveCase.html" title="{hobbes::PrimitiveCase\l\&lt; Case \&gt;\n||+ PrimitiveCase()\l+ equiv()\l+ lt()\l+ operator\&lt;()\l+ operator==()\l}" alt="" coords="118,693,273,844"/>
-<area shape="rect" id="node4" href="$classhobbes_1_1Expr.html" title="{hobbes::Expr\n|&#45; annotatedType\l&#45; cid\l|+ ~Expr()\l+ show()\l+ showAnnotated()\l+ clone()\l+ operator==()\l+ type()\l+ type()\l+ case_id()\l# Expr()\l}" alt="" coords="31,264,163,473"/>
-<area shape="rect" id="node5" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n|&#45; lannotation\l|+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="5,5,188,215"/>
-</map>

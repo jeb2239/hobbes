@@ -1,4 +1,0 @@
-<map id="hobbes::NFAState" name="hobbes::NFAState">
-<area shape="rect" id="node4" href="$classhobbes_1_1range__map.html" title="{hobbes::range_map\&lt;\l rchar_t, stateset,\l char_range_ord \&gt;\n||+ show()\l+ lookup()\l+ lookupRangeSubset()\l+ insert()\l+ insert()\l+ mergeRange()\l+ mergeRange()\l+ keys()\l+ mapping()\l+ disjointRanges()\l+ compact()\l&#45; rangesValid()\l&#45; find()\l&#45; insAt()\l&#45; deleteFrom()\l&#45; rangesValid()\l&#45; classifyIntersection()\l}" alt="" coords="274,549,433,891"/>
-<area shape="rect" id="node7" href="$classhobbes_1_1range__map.html" title="{hobbes::range_map\&lt;\l K, V, Ord \&gt;\n||+ show()\l+ lookup()\l+ lookupRangeSubset()\l+ insert()\l+ insert()\l+ mergeRange()\l+ mergeRange()\l+ keys()\l+ mapping()\l+ disjointRanges()\l+ compact()\l&#45; rangesValid()\l&#45; find()\l&#45; insAt()\l&#45; deleteFrom()\l&#45; rangesValid()\l&#45; classifyIntersection()\l}" alt="" coords="398,145,557,472"/>
-</map>

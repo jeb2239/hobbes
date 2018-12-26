@@ -1,9 +1,0 @@
-<map id="include/hobbes/util/os.H" name="include/hobbes/util/os.H">
-<area shape="rect" id="node2" href="$www_8C.html" title="bin/hi/www.C" alt="" coords="5,87,107,114"/>
-<area shape="rect" id="node3" href="$batchrecv_8C.html" title="bin/hog/batchrecv.C" alt="" coords="131,87,269,114"/>
-<area shape="rect" id="node4" href="$batchsend_8C.html" title="bin/hog/batchsend.C" alt="" coords="294,87,437,114"/>
-<area shape="rect" id="node5" href="$signals_8C.html" title="lib/hobbes/db/signals.C" alt="" coords="461,87,619,114"/>
-<area shape="rect" id="node6" href="$events_8C.html" title="lib/hobbes/events/events.C" alt="" coords="644,87,825,114"/>
-<area shape="rect" id="node7" href="$prepl_8C.html" title="lib/hobbes/ipc/prepl.C" alt="" coords="850,87,998,114"/>
-<area shape="rect" id="node8" href="$obj_8C.html" title="lib/hobbes/lang/preds\l/subtype/obj.C" alt="" coords="1022,80,1167,121"/>
-</map>

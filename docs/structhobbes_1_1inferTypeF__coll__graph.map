@@ -1,7 +1,0 @@
-<map id="hobbes::inferTypeF" name="hobbes::inferTypeF">
-<area shape="rect" id="node2" href="$structhobbes_1_1switchPattern.html" title="{hobbes::switchPattern\l\&lt; MonoTypePtr \&gt;\n||+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l}" alt="" coords="107,763,259,928"/>
-<area shape="rect" id="node3" href="$structhobbes_1_1switchPattern.html" title="{hobbes::switchPattern\&lt; T \&gt;\n||+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l+ with()\l}" alt="" coords="5,469,189,619"/>
-<area shape="rect" id="node4" href="$classhobbes_1_1MonoTypeUnifier.html" title="{hobbes::MonoTypeUnifier\n||+ MonoTypeUnifier()\l+ MonoTypeUnifier()\l+ operator=()\l+ typeEnv()\l+ size()\l+ suppress()\l+ suppress()\l+ unsuppress()\l+ unsuppress()\l+ bind()\land 6 more...\l&#45; suppressed()\l&#45; suppressed()\l}" alt="" coords="367,719,537,972"/>
-<area shape="rect" id="node8" href="$classhobbes_1_1equivalence__mapping.html" title="{hobbes::equivalence\l_mapping\&lt; MonoTypePtr,\l UTypeRec, LiftUType,\l MoreDefinedType \&gt;\n||+ equivalence_mapping()\l+ size()\l+ find()\l+ join()\l+ merge()\l+ values()\l&#45; findNode()\l&#45; findRepresentative()\l}" alt="" coords="675,432,847,656"/>
-<area shape="rect" id="node10" href="$classhobbes_1_1equivalence__mapping.html" title="{hobbes::equivalence\l_mapping\&lt; K, V, KVLift,\l VPlus \&gt;\n||+ equivalence_mapping()\l+ size()\l+ find()\l+ join()\l+ merge()\l+ values()\l&#45; findNode()\l&#45; findRepresentative()\l}" alt="" coords="726,145,893,355"/>
-</map>

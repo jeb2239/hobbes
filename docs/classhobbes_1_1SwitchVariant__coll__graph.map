@@ -1,5 +1,0 @@
-<map id="hobbes::SwitchVariant" name="hobbes::SwitchVariant">
-<area shape="rect" id="node2" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; SwitchVariant \&gt;\n||+ MStateCase()\l}" alt="" coords="247,456,392,548"/>
-<area shape="rect" id="node3" href="$classhobbes_1_1MState.html" title="{hobbes::MState\n||+ stamp()\l+ case_id()\l# MState()\l}" alt="" coords="178,145,293,252"/>
-<area shape="rect" id="node8" href="$classhobbes_1_1MStateCase.html" title="{hobbes::MStateCase\l\&lt; Case \&gt;\n||+ MStateCase()\l}" alt="" coords="251,301,396,393"/>
-</map>

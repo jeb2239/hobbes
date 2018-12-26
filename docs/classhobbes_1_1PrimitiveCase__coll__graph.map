@@ -1,6 +1,0 @@
-<map id="hobbes::PrimitiveCase&lt; Case &gt;" name="hobbes::PrimitiveCase&lt; Case &gt;">
-<area shape="rect" id="node2" href="$classhobbes_1_1Primitive.html" title="{hobbes::Primitive\n||+ operator==()\l+ operator\&lt;()\l+ primType()\l+ Primitive()\l}" alt="" coords="249,889,371,1011"/>
-<area shape="rect" id="node3" href="$classhobbes_1_1Expr.html" title="{hobbes::Expr\n||+ ~Expr()\l+ show()\l+ showAnnotated()\l+ clone()\l+ operator==()\l+ type()\l+ type()\l+ case_id()\l# Expr()\l}" alt="" coords="244,645,376,840"/>
-<area shape="rect" id="node4" href="$classhobbes_1_1LexicallyAnnotated.html" title="{hobbes::LexicallyAnnotated\n||+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ LexicallyAnnotated()\l+ la()\l+ pushFileContext()\l+ pushLiteralContext()\l+ popContext()\l+ make()\l&#45; LexicallyAnnotated()\l}" alt="" coords="84,373,267,583"/>
-<area shape="rect" id="node5" href="$structhobbes_1_1LexicalAnnotation.html" title="{hobbes::LexicalAnnotation\n||+ LexicalAnnotation()\l+ filename()\l+ lineDesc()\l+ lines()\l+ null()\l+ merge()\l}" alt="" coords="88,160,263,311"/>
-</map>

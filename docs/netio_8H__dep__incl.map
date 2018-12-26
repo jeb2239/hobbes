@@ -1,6 +1,0 @@
-<map id="bin/hog/netio.H" name="bin/hog/netio.H">
-<area shape="rect" id="node2" href="$batchrecv_8C.html" title="bin/hog/batchrecv.C" alt="" coords="5,80,144,107"/>
-<area shape="rect" id="node3" href="$batchsend_8C.html" title="bin/hog/batchsend.C" alt="" coords="169,80,311,107"/>
-<area shape="rect" id="node4" href="$local_8C.html" title="bin/hog/local.C" alt="" coords="336,80,445,107"/>
-<area shape="rect" id="node5" href="$hog_2main_8C.html" title="bin/hog/main.C" alt="" coords="470,80,581,107"/>
-</map>

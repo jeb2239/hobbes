@@ -1,8 +1,0 @@
-<map id="hobbes::Regex" name="hobbes::Regex">
-<area shape="rect" id="node2" href="$structhobbes_1_1RBind.html" title="{hobbes::RBind\n|+ var\l+ def\l|+ RBind()\l+ show()\l}" alt="" coords="5,131,113,237"/>
-<area shape="rect" id="node3" href="$structhobbes_1_1RCharRange.html" title="{hobbes::RCharRange\n|+ b\l+ e\l|+ RCharRange()\l+ show()\l}" alt="" coords="137,131,285,237"/>
-<area shape="rect" id="node4" href="$structhobbes_1_1REither.html" title="{hobbes::REither\n|+ lhs\l+ rhs\l|+ REither()\l+ show()\l}" alt="" coords="309,131,425,237"/>
-<area shape="rect" id="node5" href="$structhobbes_1_1REps.html" title="{hobbes::REps\n||+ show()\l}" alt="" coords="449,145,555,223"/>
-<area shape="rect" id="node6" href="$structhobbes_1_1RSeq.html" title="{hobbes::RSeq\n|+ lhs\l+ rhs\l|+ RSeq()\l+ show()\l}" alt="" coords="579,131,684,237"/>
-<area shape="rect" id="node7" href="$structhobbes_1_1RStar.html" title="{hobbes::RStar\n|+ v\l|+ RStar()\l+ show()\l}" alt="" coords="709,138,815,230"/>
-</map>

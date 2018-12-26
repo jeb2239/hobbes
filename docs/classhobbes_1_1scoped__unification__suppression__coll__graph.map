@@ -1,5 +1,0 @@
-<map id="hobbes::scoped_unification_suppression" name="hobbes::scoped_unification_suppression">
-<area shape="rect" id="node2" href="$classhobbes_1_1MonoTypeUnifier.html" title="{hobbes::MonoTypeUnifier\n||+ MonoTypeUnifier()\l+ MonoTypeUnifier()\l+ operator=()\l+ typeEnv()\l+ size()\l+ suppress()\l+ suppress()\l+ unsuppress()\l+ unsuppress()\l+ bind()\land 6 more...\l&#45; suppressed()\l&#45; suppressed()\l}" alt="" coords="241,719,412,972"/>
-<area shape="rect" id="node6" href="$classhobbes_1_1equivalence__mapping.html" title="{hobbes::equivalence\l_mapping\&lt; MonoTypePtr,\l UTypeRec, LiftUType,\l MoreDefinedType \&gt;\n||+ equivalence_mapping()\l+ size()\l+ find()\l+ join()\l+ merge()\l+ values()\l&#45; findNode()\l&#45; findRepresentative()\l}" alt="" coords="459,432,631,656"/>
-<area shape="rect" id="node8" href="$classhobbes_1_1equivalence__mapping.html" title="{hobbes::equivalence\l_mapping\&lt; K, V, KVLift,\l VPlus \&gt;\n||+ equivalence_mapping()\l+ size()\l+ find()\l+ join()\l+ merge()\l+ values()\l&#45; findNode()\l&#45; findRepresentative()\l}" alt="" coords="529,145,695,355"/>
-</map>

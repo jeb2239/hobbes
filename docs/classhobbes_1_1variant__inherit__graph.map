@@ -1,6 +1,0 @@
-<map id="hobbes::variant&lt; Ctors &gt;" name="hobbes::variant&lt; Ctors &gt;">
-<area shape="rect" id="node2" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; unit,\l cons_t \&gt;\n|+ storage\l+ maxAlignedT\l&#45; tag\l&#45; @6\l|+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="5,292,153,531"/>
-<area shape="rect" id="node3" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; unit, V \&gt;\n|+ storage\l+ maxAlignedT\l&#45; tag\l&#45; @6\l|+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="178,299,351,523"/>
-<area shape="rect" id="node4" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; int,\l long \&gt;\n|+ storage\l+ maxAlignedT\l&#45; tag\l&#45; @6\l|+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="375,292,517,531"/>
-<area shape="rect" id="node5" href="$classhobbes_1_1variant.html" title="{hobbes::variant\&lt; unit,\l pair_t \&gt;\n|+ storage\l+ maxAlignedT\l&#45; tag\l&#45; @6\l|+ variant()\l+ variant()\l+ variant()\l+ ~variant()\l+ operator=()\l+ get()\l+ get()\l&#45; findByCtor()\l}" alt="" coords="541,292,689,531"/>
-</map>
